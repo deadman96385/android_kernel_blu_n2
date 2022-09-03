@@ -48,6 +48,11 @@ static atomic_t g_boot_init = ATOMIC_INIT(BM_UNINIT);
 static atomic_t g_boot_errcnt = ATOMIC_INIT(0);
 static atomic_t g_boot_status = ATOMIC_INIT(0);
 
+/* prize-lifenfen-20170822, add for prize reboot*/
+static enum  boot_mode_t  g_prize_boot_mode = UNKNOWN_BOOT;
+static bool g_skip_boot_mode = false;
+static bool g_boot_mode_read_end = false;
+/* end */
 #ifdef CONFIG_OF
 struct tag_bootmode {
 	u32 size;
@@ -118,8 +123,28 @@ static void __init init_boot_common(unsigned int line)
 	pr_debug("%s %d %d %d\n", __func__, line, g_boot_mode,
 		atomic_read(&g_boot_init));
 #endif
+/* prize-lifenfen-20170822, add for prize reboot*/
+	if (g_boot_mode == PRIZE_BOOT)
+	{
+		g_prize_boot_mode = PRIZE_BOOT;
+		g_boot_mode = NORMAL_BOOT;
+	}
+/* end */
 }
 
+/* prize-lifenfen-20170822, add for prize reboot*/
+bool is_prize_boot_mode(void)
+{
+	return (!g_skip_boot_mode && g_prize_boot_mode == PRIZE_BOOT);
+}
+EXPORT_SYMBOL(is_prize_boot_mode);
+
+void set_prize_boot_mode(bool value)
+{
+	g_skip_boot_mode = !!value;
+}
+EXPORT_SYMBOL(set_prize_boot_mode);
+/* end */
 /* return boot mode */
 unsigned int get_boot_mode(void)
 {
@@ -305,6 +330,74 @@ static int boot_mode_proc_open(struct inode *inode, struct file *file)
 	return single_open(file, boot_mode_proc_show, NULL);
 }
 
+/* prize-lifenfen-20170823-prize boot mode */
+static int prize_boot_mode_proc_show(struct seq_file *m, void *v)
+{
+	seq_puts(m, "prize_boot_mode:\r\n");
+	seq_printf(m, "g_prize_boot_mode = %d\r\n", g_prize_boot_mode);
+	seq_printf(m, "g_skip_boot_mode = %d\r\n", g_skip_boot_mode);
+
+	printk("%s g_prize_boot_mode:%d g_skip_boot_mode:%d\n", __func__, g_prize_boot_mode, g_skip_boot_mode);
+
+	return 0;
+}
+
+static int prize_boot_mode_proc_open(struct inode *inode, struct file *file)
+{
+	g_boot_mode_read_end = false;
+	return single_open(file, prize_boot_mode_proc_show, NULL);
+}
+//add by lihuangyuan,add read func
+static ssize_t prize_boot_mode_proc_read(struct file *file, char __user *buf, size_t size, loff_t *ppos)
+{
+	char desc[4];
+	int err;
+	if(g_boot_mode_read_end)
+	{
+		return 0;
+	}
+	g_boot_mode_read_end = true;
+	if(is_prize_boot_mode())
+	{
+		sprintf(desc,"%d",	1);
+	}
+	else
+	{
+		sprintf(desc,"%d",	0);
+	}
+
+	printk("%s is_prize_boot_mode:%d\n", __func__,is_prize_boot_mode());
+	err = copy_to_user(buf, desc, 1);
+	if(err)return err;
+	
+	return 1;//simple_read_from_buffer(buf,size,ppos,desc,1);	
+
+}
+static ssize_t prize_boot_mode_proc_write(struct file *file, const char __user *buffer, size_t count,
+				loff_t *data)
+{
+	int len = 0, value = 0;
+	char desc[4];
+
+	len = (count < (sizeof(desc) - 1)) ? count : (sizeof(desc) - 1);
+	if (copy_from_user(desc, buffer, len))
+		return 0;
+
+	desc[len] = '\0';
+
+	if (sscanf(desc, "%d", &value) == 1) {
+		if (value)
+			g_skip_boot_mode = true;
+		else
+			g_skip_boot_mode = false;
+
+		printk("%s g_skip_boot_mode:%d\n", __func__,g_skip_boot_mode);
+		return count;
+	}
+
+	return -EINVAL;
+}
+/* end */
 static const struct file_operations boot_mode_proc_fops = {
 	.open = boot_mode_proc_open,
 	.read = seq_read,
@@ -312,6 +405,15 @@ static const struct file_operations boot_mode_proc_fops = {
 	.release = single_release,
 };
 
+/* prize-lifenfen-20170823-prize boot mode */
+static const struct file_operations prize_boot_mode_proc_fops = {
+	.open = prize_boot_mode_proc_open,
+	.read = prize_boot_mode_proc_read,//add by lihuangyuan
+	.llseek = seq_lseek,
+	.write = prize_boot_mode_proc_write,
+	.release = single_release,
+};
+/* end */
 static int __init boot_common_core(void)
 {
 	init_boot_common(__LINE__);
@@ -322,6 +424,11 @@ static int __init boot_common_core(void)
 
 	/* create sysfs entry at /sys/class/BOOT/BOOT/boot */
 	create_sysfs();
+	/* prize-lifenfen-20170823-prize boot mode */
+	/* create proc entry at /proc/prize_boot_mode */
+	if (NULL == proc_create_data("prize_boot_mode", S_IRWXU | S_IRWXG | S_IROTH, NULL, &prize_boot_mode_proc_fops, NULL))
+		pr_warn("create procfs fail");
+	/* end */
 	return 0;
 }
 

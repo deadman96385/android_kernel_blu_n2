@@ -76,7 +76,9 @@ MAIN_CFILES  += common/bu63169af/OIS_func.c
 MAIN_CFILES  += common/bu63169af/OIS_main.c
 MAIN_CFILES  += common/bu63169af/OIS_user.c
 endif
-
+#prize add by yantaotao for camera af start
+MAIN_CFILES  += common/fp5516weaf/FP5516WEAF.c
+#prize add by yantaotao for camera af end
 obj-m := mainaf.o
 mainaf-objs := $(MAIN_CFILES:.c=.o)
 
@@ -116,3 +118,6 @@ endif
 obj-y  += common/bu64253gwzaf/
 
 endif
+#prize add by yantaotao for camera af start
+obj-y  += common/fp5516weaf/
+#prize add by yantaotao for camera af end

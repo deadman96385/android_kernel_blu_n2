@@ -21,6 +21,13 @@
 #include "aw87339.h"
 #endif
 
+/* prize added by chenjiaxi, add aw87519, 20200918-start */
+#ifdef CONFIG_SND_SOC_AW87519
+#include <linux/delay.h>
+#include "aw87519_audio.h"
+#endif
+/* prize added by chenjiaxi, add aw87519, 20200918-end */
+
 /*
  * if need additional control for the ext spk amp that is connected
  * after Lineout Buffer / HP Buffer on the codec, put the control in
@@ -33,6 +40,12 @@ static const char *const mt6853_spk_type_str[] = {MTK_SPK_NOT_SMARTPA_STR,
 						  MTK_SPK_MEDIATEK_MT6660_STR,
 						  MTK_SPK_NXP_TFA98XX_STR,
 						  MTK_SPK_MEDIATEK_RT5512_STR
+/* prize modified by lifenfen, add awinic smartpa aw8898, 20200103 begin */
+						  , MTK_SPK_AWINIC_AW8898_STR
+/* prize modified by lifenfen, add awinic smartpa aw8898, 20200103 end */
+/* prize modified by wyq, add awinic smartpa aw881xx, 20200103 begin */
+						  , MTK_SPK_AWINIC_AW881XX_STR
+/* prize modified by wyq, add awinic smartpa aw881xx, 20200103 end */
 						  };
 static const char *const
 	mt6853_spk_i2s_type_str[] = {MTK_SPK_I2S_0_STR,
@@ -47,11 +60,23 @@ static const char *const
 				     MTK_SPK_TINYCONN_I2S_0_STR,
 				     };
 
+/* prize added by chenjiaxi, add aw87519, 20200918-start */
+#ifdef CONFIG_SND_SOC_AW87519
+static const char *const amp_function[] = { "Off", "On" };
+#endif
+/* prize added by chenjiaxi, add aw87519, 20200918-end */
+
 static const struct soc_enum mt6853_spk_type_enum[] = {
 	SOC_ENUM_SINGLE_EXT(ARRAY_SIZE(mt6853_spk_type_str),
 			    mt6853_spk_type_str),
 	SOC_ENUM_SINGLE_EXT(ARRAY_SIZE(mt6853_spk_i2s_type_str),
 			    mt6853_spk_i2s_type_str),
+/* prize added by chenjiaxi, add aw87519, 20200918-start */
+#ifdef CONFIG_SND_SOC_AW87519
+	SOC_ENUM_SINGLE_EXT(ARRAY_SIZE(amp_function),
+			    amp_function),
+#endif
+/* prize added by chenjiaxi, add aw87519, 20200918-end */
 };
 
 static int mt6853_spk_type_get(struct snd_kcontrol *kcontrol,
@@ -84,6 +109,35 @@ static int mt6853_spk_i2s_in_type_get(struct snd_kcontrol *kcontrol,
 	return 0;
 }
 
+/* prize added by chenjiaxi, add aw87519, 20200918-start */
+#ifdef CONFIG_SND_SOC_AW87519
+int is_receiver_speaker_switch = false;
+
+static int Receiver_Speaker_Switch_Get(struct snd_kcontrol *kcontrol,
+				       struct snd_ctl_elem_value *ucontrol)
+{
+	pr_debug("%s() : %d\n", __func__, is_receiver_speaker_switch);
+	ucontrol->value.integer.value[0] = is_receiver_speaker_switch;
+	return 0;
+}
+
+static int Receiver_Speaker_Switch_Set(struct snd_kcontrol *kcontrol,
+				       struct snd_ctl_elem_value *ucontrol)
+{
+	pr_debug("%s()\n", __func__);
+	if ((ucontrol->value.integer.value[0] == true) 
+				      && (is_receiver_speaker_switch == false)) {
+		is_receiver_speaker_switch = ucontrol->value.integer.value[0];
+	} else if ((ucontrol->value.integer.value[0] == false) 
+				      && (is_receiver_speaker_switch == true)) {
+		is_receiver_speaker_switch = ucontrol->value.integer.value[0];
+	}
+    pr_debug("%s() is_receiver_speaker_switch=%d\n", __func__, is_receiver_speaker_switch);
+	return 0;
+}
+#endif
+/* prize added by chenjiaxi, add aw87519, 20200918-end */
+
 static int mt6853_mt6359_spk_amp_event(struct snd_soc_dapm_widget *w,
 				       struct snd_kcontrol *kcontrol,
 				       int event)
@@ -99,12 +153,30 @@ static int mt6853_mt6359_spk_amp_event(struct snd_soc_dapm_widget *w,
 #ifdef CONFIG_SND_SOC_AW87339
 		aw87339_spk_enable_set(true);
 #endif
+/* prize added by chenjiaxi, add aw87519, 20200918-start */
+#ifdef CONFIG_SND_SOC_AW87519
+		aw87519_audio_off();
+		usleep_range(1*1000, 20*1000);
+        if (is_receiver_speaker_switch == true) {
+            aw87519_audio_drcv();
+        } else {
+            aw87519_audio_kspk();
+        }
+		msleep(25);
+#endif
+/* prize added by chenjiaxi, add aw87519, 20200918-end */
 		break;
 	case SND_SOC_DAPM_PRE_PMD:
 		/* spk amp off control */
 #ifdef CONFIG_SND_SOC_AW87339
 		aw87339_spk_enable_set(false);
 #endif
+/* prize added by chenjiaxi, add aw87519, 20200918-start */
+#ifdef CONFIG_SND_SOC_AW87519
+		aw87519_audio_off();
+		udelay(500);
+#endif
+/* prize added by chenjiaxi, add aw87519, 20200918-end */
 		break;
 	default:
 		break;
@@ -131,6 +203,12 @@ static const struct snd_kcontrol_new mt6853_mt6359_controls[] = {
 		     mt6853_spk_i2s_out_type_get, NULL),
 	SOC_ENUM_EXT("MTK_SPK_I2S_IN_TYPE_GET", mt6853_spk_type_enum[1],
 		     mt6853_spk_i2s_in_type_get, NULL),
+/* prize added by chenjiaxi, add aw87519, 20200918-start */
+#ifdef CONFIG_SND_SOC_AW87519
+	SOC_ENUM_EXT("Receiver_Speaker_Switch", mt6853_spk_type_enum[2],
+		     Receiver_Speaker_Switch_Get, Receiver_Speaker_Switch_Set),
+#endif
+/* prize added by chenjiaxi, add aw87519, 20200918-end */
 };
 
 /*

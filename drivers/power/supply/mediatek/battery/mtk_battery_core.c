@@ -81,7 +81,16 @@
 #include "simulator_kernel.h"
 #endif
 
-
+/* prize added by chenjiaxi, battery info, 20190115-start */
+#if defined(CONFIG_PRIZE_HARDWARE_INFO_BAT)
+#include "../../../misc/mediatek/prize/hardware_info/hardware_info.h"
+extern struct hardware_info current_battery_info;
+unsigned char s_Q_MAX_50[32] = "0";
+unsigned char s_Q_MAX_25[32] = "0";
+unsigned char s_Q_MAX_0[32] = "0";
+unsigned char s_Q_MAX_10[32] = "0";
+#endif
+/* prize added by chenjiaxi, battery info, 20190115-end */
 
 /* ============================================================ */
 /* global variable */
@@ -812,6 +821,7 @@ void fg_custom_init_from_header(void)
 	/* ZCV update */
 	fg_cust_data.zcv_suspend_time = ZCV_SUSPEND_TIME;
 	fg_cust_data.sleep_current_avg = SLEEP_CURRENT_AVG;
+	fg_cust_data.zcv_com_vol_limit = ZCV_COM_VOL_LIMIT;
 	fg_cust_data.zcv_car_gap_percentage = ZCV_CAR_GAP_PERCENTAGE;
 
 	/* dod_init */
@@ -1180,6 +1190,24 @@ static void fg_custom_parse_table(const struct device_node *np,
 
 		idx = idx + column;
 	}
+/* prize added by chenjiaxi, battery info, 20190115-start */
+#if defined(CONFIG_PRIZE_HARDWARE_INFO_BAT)
+	strcpy(current_battery_info.batt_versions, "V0.0.0");
+    if (!strcmp(node_srting, "battery0_profile_t0")) {
+        sprintf(s_Q_MAX_50,"%d",profile_p->mah);
+        strcpy(current_battery_info.Q_MAX_50, s_Q_MAX_50);
+    } else if (!strcmp(node_srting, "battery0_profile_t1")) {
+        sprintf(s_Q_MAX_25,"%d",profile_p->mah);
+        strcpy(current_battery_info.Q_MAX_25, s_Q_MAX_25);
+    } else if (!strcmp(node_srting, "battery0_profile_t3")) {
+        sprintf(s_Q_MAX_0,"%d",profile_p->mah);
+        strcpy(current_battery_info.Q_MAX_0, s_Q_MAX_0);
+    } else if (!strcmp(node_srting, "battery0_profile_t4")) {
+        sprintf(s_Q_MAX_10,"%d",profile_p->mah);
+        strcpy(current_battery_info.Q_MAX_10, s_Q_MAX_10);
+    }
+#endif
+/* prize added by chenjiaxi, battery info, 20190115-end */
 }
 
 /* struct FUELGAUGE_TEMPERATURE Fg_Temperature_Table[21]; */
@@ -1438,6 +1466,8 @@ void fg_custom_init_from_dts(struct platform_device *dev)
 		&(fg_cust_data.zcv_suspend_time), 1);
 	fg_read_dts_val(np, "SLEEP_CURRENT_AVG",
 		&(fg_cust_data.sleep_current_avg), 1);
+	fg_read_dts_val(np, "ZCV_COM_VOL_LIMIT",
+		&(fg_cust_data.zcv_com_vol_limit), 1);
 	fg_read_dts_val(np, "ZCV_CAR_GAP_PERCENTAGE",
 		&(fg_cust_data.zcv_car_gap_percentage), 1);
 

@@ -135,6 +135,11 @@ static struct imgsensor_info_struct imgsensor_info = {
 		.max_framerate = 300,
 		},
 
+	.min_gain = 64,
+	.max_gain = 768,
+	.min_gain_iso = 100,
+	.gain_step = 1,
+	.gain_type = 4,
 	.margin = 4,		/* sensor framelength & shutter margin */
 	.min_shutter = 1,	/* min shutter */
 	.max_frame_length = 0x7fff,
@@ -158,7 +163,7 @@ static struct imgsensor_info_struct imgsensor_info = {
 	.sensor_output_dataformat = SENSOR_OUTPUT_FORMAT_RAW_B,
 	.mclk = 24,
 	.mipi_lane_num = SENSOR_MIPI_1_LANE,	/* mipi lane num */
-	.i2c_addr_table = {0x20, 0xff},
+	.i2c_addr_table = {0x6C, 0x20,0xFF},
 };
 
 static struct imgsensor_struct imgsensor = {
@@ -173,7 +178,7 @@ static struct imgsensor_struct imgsensor = {
 	.test_pattern = KAL_FALSE,
 	.current_scenario_id = MSDK_SCENARIO_ID_CAMERA_PREVIEW,
 	.ihdr_en = 0,
-	.i2c_write_id = 0x20,	/* record current sensor's i2c write id */
+	.i2c_write_id = 0x6C,	/* record current sensor's i2c write id */
 };
 
 /* Sensor output window information */
@@ -448,27 +453,27 @@ static void set_mirror_flip(kal_uint8 image_mirror)
 	switch (image_mirror) {
 	case IMAGE_NORMAL:
 		write_cmos_sensor(0x3820,
-			((read_cmos_sensor(0x3820) & 0xF9) | 0x00));
+			((read_cmos_sensor(0x3820) & 0xFB) | 0x00));
 		write_cmos_sensor(0x3821,
-			((read_cmos_sensor(0x3821) & 0xF9) | 0x06));
+			((read_cmos_sensor(0x3821) & 0xFB) | 0x00));
 		break;
 	case IMAGE_H_MIRROR:
 		write_cmos_sensor(0x3820,
-			((read_cmos_sensor(0x3820) & 0xF9) | 0x00));
+			((read_cmos_sensor(0x3820) & 0xFB) | 0x00));
 		write_cmos_sensor(0x3821,
-			((read_cmos_sensor(0x3821) & 0xF9) | 0x00));
+			((read_cmos_sensor(0x3821) & 0xFB) | 0x04));
 		break;
 	case IMAGE_V_MIRROR:
 		write_cmos_sensor(0x3820,
-			((read_cmos_sensor(0x3820) & 0xF9) | 0x06));
+			((read_cmos_sensor(0x3820) & 0xFB) | 0x04));
 		write_cmos_sensor(0x3821,
-			((read_cmos_sensor(0x3821) & 0xF9) | 0x06));
+			((read_cmos_sensor(0x3821) & 0xFB) | 0x00));
 		break;
 	case IMAGE_HV_MIRROR:
 		write_cmos_sensor(0x3820,
-			((read_cmos_sensor(0x3820) & 0xF9) | 0x06));
+			((read_cmos_sensor(0x3820) & 0xFB) | 0x04));
 		write_cmos_sensor(0x3821,
-			((read_cmos_sensor(0x3821) & 0xF9) | 0x00));
+			((read_cmos_sensor(0x3821) & 0xFB) | 0x04));
 		break;
 	default:
 		cam_pr_debug("Error image_mirror setting\n");
@@ -881,6 +886,7 @@ static kal_uint32 preview(MSDK_SENSOR_EXPOSURE_WINDOW_STRUCT *image_window,
 	imgsensor.autoflicker_en = KAL_FALSE;
 	spin_unlock(&imgsensor_drv_lock);
 	preview_setting();
+	//set_mirror_flip(imgsensor.mirror);
 	return ERROR_NONE;
 }				/*      preview   */
 
@@ -924,6 +930,7 @@ static kal_uint32 capture(MSDK_SENSOR_EXPOSURE_WINDOW_STRUCT *image_window,
 	}
 	spin_unlock(&imgsensor_drv_lock);
 	capture_setting(imgsensor.current_fps);
+	//set_mirror_flip(imgsensor.mirror);
 	mdelay(10);
 	return ERROR_NONE;
 }				/* capture() */
@@ -943,6 +950,7 @@ static kal_uint32 normal_video(MSDK_SENSOR_EXPOSURE_WINDOW_STRUCT *image_window,
 	imgsensor.autoflicker_en = KAL_FALSE;
 	spin_unlock(&imgsensor_drv_lock);
 	normal_video_setting(imgsensor.current_fps);
+	//set_mirror_flip(imgsensor.mirror);
 	return ERROR_NONE;
 }				/*      normal_video   */
 
@@ -986,6 +994,7 @@ static kal_uint32 slim_video(MSDK_SENSOR_EXPOSURE_WINDOW_STRUCT *image_window,
 	imgsensor.autoflicker_en = KAL_FALSE;
 	spin_unlock(&imgsensor_drv_lock);
 	slim_video_setting();
+	//set_mirror_flip(imgsensor.mirror);
 
 	return ERROR_NONE;
 }				/*      slim_video       */
@@ -1427,6 +1436,84 @@ static kal_uint32 feature_control(MSDK_SENSOR_FEATURE_ENUM feature_id,
 	case SENSOR_FEATURE_GET_PIXEL_CLOCK_FREQ:
 		*feature_return_para_32 = imgsensor.pclk;
 		*feature_para_len = 4;
+		break;
+	case SENSOR_FEATURE_GET_PIXEL_CLOCK_FREQ_BY_SCENARIO:
+		switch (*feature_data) {
+		case MSDK_SCENARIO_ID_CAMERA_CAPTURE_JPEG:
+			*(MUINT32 *)(uintptr_t)(*(feature_data + 1)) = imgsensor_info.cap.pclk;
+			 break;
+		case MSDK_SCENARIO_ID_VIDEO_PREVIEW:
+			*(MUINT32 *)(uintptr_t)(*(feature_data + 1)) = imgsensor_info.normal_video.pclk;
+			 break;
+		case MSDK_SCENARIO_ID_HIGH_SPEED_VIDEO:
+			*(MUINT32 *)(uintptr_t)(*(feature_data + 1)) = imgsensor_info.hs_video.pclk;
+			 break;
+		case MSDK_SCENARIO_ID_SLIM_VIDEO:
+			 *(MUINT32 *)(uintptr_t)(*(feature_data + 1)) = imgsensor_info.slim_video.pclk;
+			 break;
+		case MSDK_SCENARIO_ID_CAMERA_PREVIEW:
+		default:
+			*(MUINT32 *)(uintptr_t)(*(feature_data + 1)) = imgsensor_info.pre.pclk;
+			break;
+		}
+		break;
+  	case SENSOR_FEATURE_GET_PERIOD_BY_SCENARIO:
+		switch (*feature_data) {
+		case MSDK_SCENARIO_ID_CAMERA_CAPTURE_JPEG:
+			*(MUINT32 *)(uintptr_t)(*(feature_data + 1)) =
+				(imgsensor_info.cap.framelength << 16) + imgsensor_info.cap.linelength;
+			 break;
+		case MSDK_SCENARIO_ID_VIDEO_PREVIEW:
+			*(MUINT32 *)(uintptr_t)(*(feature_data + 1)) =
+				(imgsensor_info.normal_video.framelength << 16) + imgsensor_info.normal_video.linelength;
+			 break;
+		case MSDK_SCENARIO_ID_HIGH_SPEED_VIDEO:
+			*(MUINT32 *)(uintptr_t)(*(feature_data + 1)) =
+				(imgsensor_info.hs_video.framelength << 16) + imgsensor_info.hs_video.linelength;
+			 break;
+		case MSDK_SCENARIO_ID_SLIM_VIDEO:
+			*(MUINT32 *)(uintptr_t)(*(feature_data + 1)) =
+				(imgsensor_info.slim_video.framelength << 16) + imgsensor_info.slim_video.linelength;
+			break;
+		case MSDK_SCENARIO_ID_CAMERA_PREVIEW:
+		default:
+			*(MUINT32 *)(uintptr_t)(*(feature_data + 1)) =
+			(imgsensor_info.pre.framelength << 16) + imgsensor_info.pre.linelength;
+			break;
+		}
+		break;
+	case SENSOR_FEATURE_GET_GAIN_RANGE_BY_SCENARIO:
+		*(feature_data + 1) = imgsensor_info.min_gain;
+		*(feature_data + 2) = imgsensor_info.max_gain;
+		break;
+	case SENSOR_FEATURE_GET_BASE_GAIN_ISO_AND_STEP:
+		*(feature_data + 0) = imgsensor_info.min_gain_iso;
+		*(feature_data + 1) = imgsensor_info.gain_step;
+		*(feature_data + 2) = imgsensor_info.gain_type;
+		break;
+	case SENSOR_FEATURE_GET_MIN_SHUTTER_BY_SCENARIO:
+		*(feature_data + 1) = imgsensor_info.min_shutter;
+		break;
+	case SENSOR_FEATURE_GET_BINNING_TYPE:
+		switch (*(feature_data + 1)) {
+		case MSDK_SCENARIO_ID_CUSTOM3:
+			*feature_return_para_32 = 1;
+			break;
+		case MSDK_SCENARIO_ID_CAMERA_CAPTURE_JPEG:
+		case MSDK_SCENARIO_ID_VIDEO_PREVIEW:
+		case MSDK_SCENARIO_ID_HIGH_SPEED_VIDEO:
+		case MSDK_SCENARIO_ID_SLIM_VIDEO:
+		case MSDK_SCENARIO_ID_CAMERA_PREVIEW:
+		case MSDK_SCENARIO_ID_CUSTOM4:
+		default:
+			*feature_return_para_32 = 2;
+			break;
+		}
+		*feature_para_len = 4;
+		break;
+	case SENSOR_FEATURE_GET_FRAME_CTRL_INFO_BY_SCENARIO:
+		*(feature_data + 1) = 0;
+		*(feature_data + 2) = imgsensor_info.margin;
 		break;
 	case SENSOR_FEATURE_SET_ESHUTTER:
 		set_shutter(*feature_data);

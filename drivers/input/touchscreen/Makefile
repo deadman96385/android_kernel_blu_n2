@@ -105,6 +105,15 @@ obj-$(CONFIG_TOUCHSCREEN_ZET6223)	+= zet6223.o
 obj-$(CONFIG_TOUCHSCREEN_ZFORCE)	+= zforce_ts.o
 obj-$(CONFIG_TOUCHSCREEN_COLIBRI_VF50)	+= colibri-vf50-ts.o
 obj-$(CONFIG_TOUCHSCREEN_ROHM_BU21023)	+= rohm_bu21023.o
+
+#prize-add-pengzhipeng-20191029-start
+obj-$(CONFIG_TOUCHSCREEN_NT36xxx_HOSTDL_SPI) +=  NVT_Touch_HostDL/
+#prize-add-pengzhipeng-20191029-end
+
+#prize add by hanwei for SYNAPTICS TCM 20210704 start
+obj-$(CONFIG_TOUCHSCREEN_SYNAPTICS_TCM) +=  synaptics_tcm/
+#prize add by hanwei for SYNAPTICS TCM 20210704 end
+
 TOUCH_LISTS := $(subst ",,$(CONFIG_TOUCHSCREEN_MTK_TOUCH))
 obj-y += $(foreach TOUCH,$(TOUCH_LISTS),$(TOUCH)/)
 

@@ -21,8 +21,8 @@
 #define IMGSENSOR_DEV_NAME "kd_camera_hw"
 
 
-#define IMGSENSOR_HW_POWER_INFO_MAX	12
-#define IMGSENSOR_HW_SENSOR_MAX_NUM	12
+#define IMGSENSOR_HW_POWER_INFO_MAX	16
+#define IMGSENSOR_HW_SENSOR_MAX_NUM	16
 
 enum IMGSENSOR_HW_PIN {
 	IMGSENSOR_HW_PIN_NONE = 0,
@@ -34,6 +34,9 @@ enum IMGSENSOR_HW_PIN {
 #endif
 	IMGSENSOR_HW_PIN_DVDD,
 	IMGSENSOR_HW_PIN_DOVDD,
+	// prize add by linchong 20210524 for AF LDO start
+	IMGSENSOR_HW_PIN_AFVDD,
+	// prize add by linchong 20210524 for AF LDO start
 #ifdef MIPI_SWITCH
 	IMGSENSOR_HW_PIN_MIPI_SWITCH_EN,
 	IMGSENSOR_HW_PIN_MIPI_SWITCH_SEL,
@@ -74,8 +77,10 @@ enum IMGSENSOR_HW_PIN_STATE {
 #define VDD_None    IMGSENSOR_HW_PIN_NONE
 
 	/* For backward compatible */
-#define AFVDD       IMGSENSOR_HW_PIN_UNDEF
-
+// prize add by linchong 20210524 for AF LDO start
+//#define AFVDD       IMGSENSOR_HW_PIN_UNDEF
+#define AFVDD		IMGSENSOR_HW_PIN_AFVDD
+// prize add by linchong 20210524 for AF LDO end
 
 /* Voltage */
 #define Vol_Low   IMGSENSOR_HW_PIN_STATE_LEVEL_0

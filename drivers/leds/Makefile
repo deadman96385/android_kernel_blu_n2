@@ -86,3 +86,8 @@ obj-$(CONFIG_LEDS_USER)			+= uleds.o
 
 # LED Triggers
 obj-$(CONFIG_LEDS_TRIGGERS)		+= trigger/
+
+
+# prize add by huarui , 20210901, start
+obj-$(CONFIG_LEDS_AW9110)		+= leds-aw9110.o
+# prize add by huarui , 20210901, end

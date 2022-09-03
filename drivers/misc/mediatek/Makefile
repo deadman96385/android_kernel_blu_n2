@@ -130,6 +130,7 @@ obj-$(CONFIG_MTK_LCM) += ext_disp/
 ifneq ($(CONFIG_CUSTOM_KERNEL_HDMI), "")
 obj-$(CONFIG_MTK_HDMI_SUPPORT) += hdmi/
 endif
+obj-$(CONFIG_MTK_MT6382_BDG) += spi_slave_drv/
 obj-$(CONFIG_MTK_FB) += video/
 obj-$(CONFIG_MTK_DYNAMIC_FPS_FRAMEWORK_SUPPORT) += dfrc/
 obj-$(CONFIG_MTK_PMIC_WRAP_HAL) += pmic_wrap/
@@ -173,7 +174,21 @@ obj-$(CONFIG_MTK_UNIFIED_DEBUG_INTERFACE) += udi/
 obj-y += rps/
 obj-$(CONFIG_MTK_MDDP_SUPPORT) += mddp/
 obj-$(CONFIG_MTK_USB2JTAG_SUPPORT) += usb2jtag/
+#prize add by lipengpeng 20191224 start
+obj-$(CONFIG_NFC_CHIP_SUPPORT) += nfc/
+#prize add by lipengpeng 20191224  end
 obj-y += subpmic/
 obj-$(CONFIG_MTK_GATE_IC) += gate_ic/
 obj-$(CONFIG_MTK_OTP) += otp/
 obj-$(CONFIG_MTK_SDA) += sda/
+
+
+
+#prize add by huarui, prize drv build support 20200327 start
+obj-y += prize/
+#prize add by huarui, prize drv build support 20200327 end
+obj-$(CONFIG_PRIZE_EXERGEN) += prize_exergen/
+#prize add by huarui, prize drv build support 20200327 end
+#prize add by yantaotao for camera start
+obj-$(CONFIG_PRIZE_DUAL_CAMERA_ENABLE) += prize_dual_camera/
+#prize add by yantaotao for camera end

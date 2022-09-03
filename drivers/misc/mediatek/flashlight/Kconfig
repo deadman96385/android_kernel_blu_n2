@@ -180,3 +180,68 @@ config MTK_FLASHLIGHT_DLPT
 	  the current of battary dynamicly. It will start by request
 	  and notice user by kernel notifier.
 
+
+#//prize added by huarui, flashlight support, 20190111-start 
+config MTK_FLASHLIGHT_AW3641_GPIO
+	tristate "Mediatek flashlight aw gpio driver"
+	depends on MTK_FLASHLIGHT
+	default n
+	help
+		This is flashlight aw gpio driver for camera.
+
+config MTK_FLASHLIGHT_WD3100D_GPIO
+	tristate "Mediatek flashlight wd3100d gpio driver"
+	depends on MTK_FLASHLIGHT
+	default n
+	help
+		This is flashlight aw gpio driver for camera.
+
+config MTK_FLASHLIGHT_ISINK
+	tristate "Mediatek flashlight isink driver"
+	depends on MTK_FLASHLIGHT
+	default n
+	help
+		This is flashlight isink gpio driver for camera.
+
+config MTK_FLASHLIGHT_SGM37898
+	tristate "Mediatek flashlight isink driver"
+	depends on MTK_FLASHLIGHT
+	default n
+	help
+		This is flashlight isink gpio driver for camera.
+
+config MTK_FLASHLIGHT_SGM37895
+	tristate "Mediatek flashlight isink driver"
+	depends on MTK_FLASHLIGHT
+	default n
+	help
+		This is flashlight isink gpio driver for camera.
+
+config MTK_FLASHLIGHT_SGM37895A
+	tristate "Mediatek flashlight isink driver"
+	depends on MTK_FLASHLIGHT
+	default n
+	help
+		This is flashlight isink gpio driver for camera.
+
+config MTK_FLASHLIGHT_AW36515IR
+	tristate "Mediatek flashlight aw gpio driver"
+	depends on MTK_FLASHLIGHT
+	default n
+	help
+		This is flashlight aw gpio driver for camera.
+
+config MTK_FLASHLIGHT_AW36413
+	tristate "Mediatek flashlight aw gpio driver"
+	depends on MTK_FLASHLIGHT
+	default n
+	help
+		This is flashlight aw gpio driver for camera.
+
+config PRIZE_CAM_IRTORCH
+	tristate "Mediatek flashlight aw gpio driver"
+	depends on MTK_FLASHLIGHT
+	default n
+	help
+		This is flashlight aw gpio driver for camera.
+#//prize added by huarui, flashlight support, 20190111-start

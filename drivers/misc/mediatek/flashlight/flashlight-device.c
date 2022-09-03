@@ -73,11 +73,21 @@ const struct flashlight_device_id flashlight_id[] = {
 	{0, 0, 0, "flashlights-mt6336", 0, 0},
 	{0, 1, 0, "flashlights-mt6336", 1, 0},
 };
+//prize add by yantaotao  for single  flash 20210924 start
+#elif defined(mt6833)
+const struct flashlight_device_id flashlight_id[] = {
+	/* {TYPE, CT, PART, "NAME", CHANNEL, DECOUPLE} */
+	{0, 0, 0, "flashlights-mt6360", 0, 1},
+//	{0, 1, 0, "flashlights-mt6360", 1, 0},
+};
+//prize add by yantaotao  for single  flash 20210924 end
 #elif defined(mt8167)
 const struct flashlight_device_id flashlight_id[] = {
 	/* {TYPE, CT, PART, "NAME", CHANNEL, DECOUPLE} */
-	{0, 0, 0, "flashlights-lm3642", 0, 0},
+	{0, 0, 0, "flashlights-mt6360", 0, 0},
+	{0, 1, 0, "flashlights-mt6360", 1, 0},
 };
+//prize add by wuhui support for dual flashlight 20210805 end
 #else
 const struct flashlight_device_id flashlight_id[] = {
 	/* {TYPE, CT, PART, "NAME", CHANNEL, DECOUPLE} */

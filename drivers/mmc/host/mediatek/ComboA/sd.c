@@ -472,8 +472,8 @@ int msdc_clk_stable(struct msdc_host *host, u32 mode, u32 div,
 			pr_info("msdc%d on clock failed ===> retry twice\n",
 				host->id);
 
-			msdc_clk_disable_unprepare(host);
-			msdc_clk_prepare_enable(host);
+			msdc_clk_disable(host);
+			msdc_clk_enable(host);
 			msdc_dump_info(NULL, 0, NULL, host->id);
 			host->prev_cmd_cause_dump = 0;
 		}
@@ -3269,7 +3269,7 @@ int msdc_do_request(struct mmc_host *mmc, struct mmc_request *mrq)
 			pr_debug("[%s]: start pio read\n", __func__);
 #endif
 			if (msdc_pio_read(host, data)) {
-				msdc_clk_disable_unprepare(host);
+				msdc_clk_disable(host);
 				msdc_clk_enable_and_stable(host);
 				goto stop;      /* need cmd12 */
 			}
@@ -3278,7 +3278,7 @@ int msdc_do_request(struct mmc_host *mmc, struct mmc_request *mrq)
 			pr_debug("[%s]: start pio write\n", __func__);
 #endif
 			if (msdc_pio_write(host, data)) {
-				msdc_clk_disable_unprepare(host);
+				msdc_clk_disable(host);
 				msdc_clk_enable_and_stable(host);
 				goto stop;
 			}

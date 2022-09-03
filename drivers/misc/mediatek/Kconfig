@@ -321,6 +321,9 @@ source "drivers/misc/mediatek/devmpu/Kconfig"
 source "drivers/misc/mediatek/performance/Kconfig"
 source "drivers/misc/mediatek/usb2jtag/Kconfig"
 source "drivers/misc/mediatek/cqdma/Kconfig"
+#prize add by lipengpeng 20191224 start
+source "drivers/misc/mediatek/nfc/Kconfig"
+#prize add by lipengpeng 20191224 end
 endmenu # Other Peripheral
 
 menu "Performance, Power, and Thermal"
@@ -446,5 +449,16 @@ source "drivers/misc/mediatek/hdmi/Kconfig"
 source "drivers/misc/mediatek/otp/Kconfig"
 source "drivers/misc/mediatek/sda/Kconfig"
 
+
+#prize add by huarui, prize drv build support 20200327 start
+source "drivers/misc/mediatek/prize/Kconfig"
+#prize add by huarui, prize drv build support 20200327 end
+
+#prize add by liaojie, prize_exergen build support 20210128 start
+source "drivers/misc/mediatek/prize_exergen/Kconfig"
+#prize add by liaojie, prize_exergen build support 20210128 end
+#prize add by yantaotao for camera start
+source "drivers/misc/mediatek/prize_dual_camera/Kconfig"
+#prize add by yantaotao for camera end
 endmenu    # Misc
 

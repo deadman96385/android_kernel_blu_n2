@@ -22,21 +22,35 @@ struct GPIO_PINCTRL gpio_pinctrl_list_cam[
 	{"rst0"},
 	{"ldo_vcama_1"},
 	{"ldo_vcama_0"},
+#ifdef CONFIG_REGULATOR_RT5133
+	{"ldo_vcama1_1"},
+	{"ldo_vcama1_0"},
+#endif
 	{"ldo_vcamd_1"},
 	{"ldo_vcamd_0"},
 	{"ldo_vcamio_1"},
 	{"ldo_vcamio_0"},
+	// prize add by linchong 20210524 for af ldo start
+	{"ldo_vcamaf_1"},
+	{"ldo_vcamaf_0"},
+	// prize add by linchong 20210524 for af ldo end
 };
 
+//prize modify by yantaotao for camera start
 #ifdef MIPI_SWITCH
 struct GPIO_PINCTRL gpio_pinctrl_list_switch[
 			GPIO_CTRL_STATE_MAX_NUM_SWITCH] = {
 	{"cam_mipi_switch_en_1"},
 	{"cam_mipi_switch_en_0"},
 	{"cam_mipi_switch_sel_1"},
-	{"cam_mipi_switch_sel_0"}
+	{"cam_mipi_switch_sel_0"},
+	{"cam_mipi_switch2_en_1"},
+	{"cam_mipi_switch2_en_0"},
+	{"cam_mipi_switch2_sel_1"},
+	{"cam_mipi_switch2_sel_0"}
 };
 #endif
+//prize modify by yantaotao for camera end
 
 static struct GPIO gpio_instance;
 
@@ -76,7 +90,7 @@ static enum IMGSENSOR_RETURN gpio_init(
 						pgpio->ppinctrl,
 						str_pinctrl_name);
 			}
-
+			
 			if (pgpio->ppinctrl_state_cam[j][i] == NULL ||
 				IS_ERR(pgpio->ppinctrl_state_cam[j][i])) {
 				pr_info(
@@ -129,7 +143,9 @@ static enum IMGSENSOR_RETURN gpio_set(
 
 	if (pin < IMGSENSOR_HW_PIN_PDN ||
 #ifdef MIPI_SWITCH
-	    pin > IMGSENSOR_HW_PIN_MIPI_SWITCH_SEL ||
+//prize modify by yantaotao for camera start
+	    pin > IMGSENSOR_HW_PIN_MIPI_SWITCH2_SEL ||
+//prize modify by yantaotao for camera end		
 #else
 		pin > IMGSENSOR_HW_PIN_DOVDD ||
 #endif
@@ -148,6 +164,14 @@ static enum IMGSENSOR_RETURN gpio_set(
 	else if (pin == IMGSENSOR_HW_PIN_MIPI_SWITCH_SEL)
 		ppinctrl_state = pgpio->ppinctrl_state_switch[
 			GPIO_CTRL_STATE_MIPI_SWITCH_SEL_H + gpio_state];
+//prize modify by yantaotao for camera start			
+	else if (pin == IMGSENSOR_HW_PIN_MIPI_SWITCH2_EN)
+		ppinctrl_state = pgpio->ppinctrl_state_switch[
+			GPIO_CTRL_STATE_MIPI_SWITCH2_EN_H + gpio_state];
+	else if (pin == IMGSENSOR_HW_PIN_MIPI_SWITCH2_SEL)
+		ppinctrl_state = pgpio->ppinctrl_state_switch[
+			GPIO_CTRL_STATE_MIPI_SWITCH2_SEL_H + gpio_state];
+//prize modify by yantaotao for camera end
 	else
 #endif
 	{

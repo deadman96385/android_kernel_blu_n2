@@ -39,6 +39,19 @@ struct REGULATOR_CTRL regulator_control[REGULATOR_TYPE_MAX_NUM] = {
 
 static struct REGULATOR reg_instance;
 
+/*prize add by yantaotao for sham dual camera   start*/
+#ifdef CONFIG_PRIZE_DUAL_CAMERA_ENABLE
+void set_avdd_regulator(int status)
+{
+
+}
+void set_dvdd_regulator(int status)
+{
+
+}
+#endif
+/*prize add by yantaotao for sham dual camera   end*/
+
 static enum IMGSENSOR_RETURN regulator_init(
 	void *pinstance,
 	struct IMGSENSOR_HW_DEVICE_COMMON *pcommon)

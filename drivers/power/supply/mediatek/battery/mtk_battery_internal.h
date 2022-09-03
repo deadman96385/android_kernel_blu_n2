@@ -54,6 +54,10 @@
 #define INIT_VOLTAGE 3450
 #define BATTERY_SHUTDOWN_TEMPERATURE 60
 
+/* Prize Hanjiuping added 20210909 for low temperature shutdown start */
+#define BATTERY_SHUTDOWN_LOW_TEMPERATURE (-20)
+/* Prize Hanjiuping added 20210909 for low temperature shutdown end */
+
 /* ============================================================ */
 /* typedef and Struct*/
 /* ============================================================ */
@@ -486,6 +490,7 @@ struct fuel_gauge_custom_data {
 	/* ZCV update */
 	int zcv_suspend_time;
 	int sleep_current_avg;
+	int zcv_com_vol_limit;
 
 	int dc_ratio_sel;
 	int dc_r_cnt;

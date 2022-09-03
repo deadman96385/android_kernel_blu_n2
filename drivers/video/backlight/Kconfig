@@ -155,6 +155,15 @@ endif # LCD_CLASS_DEVICE
 #
 # Backlight
 #
+
+config BACKLIGHT_AW99703
+	tristate "LED Support for AW99703"
+	depends on BACKLIGHT_CLASS_DEVICE && I2C
+	help
+		this option enables support for the AW99703 LED connected
+		through I2C. Say Y to enable support for the AW99703 LED
+		light automatically.
+		
 config BACKLIGHT_CLASS_DEVICE
         tristate "Lowlevel Backlight controls"
 	default m

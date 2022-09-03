@@ -40,3 +40,13 @@ subdir-ccflags-y += \
 	-I$(MTK_CUSTOM_PATH)/pmic/include \
 	-I$(MTK_CUSTOM_PATH)/pmic
 
+#prize added by huarui, flashlight support, 20190111-start
+obj-$(CONFIG_MTK_FLASHLIGHT_AW3641_GPIO)     += flashlights-aw3641-gpio.o
+obj-$(CONFIG_MTK_FLASHLIGHT_WD3100D_GPIO)     += flashlights-wd3100d-gpio.o
+obj-$(CONFIG_MTK_FLASHLIGHT_ISINK)     += flashlights-isink.o
+obj-$(CONFIG_MTK_FLASHLIGHT_SGM37898)      += flashlights-sgm37898.o
+obj-$(CONFIG_MTK_FLASHLIGHT_SGM37895)      += flashlights-sgm37895.o
+obj-$(CONFIG_MTK_FLASHLIGHT_SGM37895A)      += flashlights-sgm37895a.o
+obj-$(CONFIG_MTK_FLASHLIGHT_AW36515IR)     += flashlights-aw36515ir.o
+obj-$(CONFIG_MTK_FLASHLIGHT_AW36413)     += flashlights-aw36413.o
+#prize added by huarui, flashlight support, 20190111-end

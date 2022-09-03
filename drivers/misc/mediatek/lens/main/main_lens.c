@@ -127,6 +127,10 @@ static struct stAF_DrvList g_stAF_DrvList[MAX_NUM_OF_LENS] = {
 	 DW9839AF_Release, DW9839AF_GetFileName, NULL},
 	{1, AFDRV_FP5510E2AF, FP5510E2AF_SetI2Cclient, FP5510E2AF_Ioctl,
 	 FP5510E2AF_Release, FP5510E2AF_GetFileName, NULL},
+	 //prize add by yantaotao for camera af start
+	{1, AFDRV_FP5516WEAF, FP5516WEAF_SetI2Cclient, FP5516WEAF_Ioctl,
+	 FP5516WEAF_Release, FP5516WEAF_GetFileName, NULL},
+	 //prize add by yantaotao for camera af end
 	{1, AFDRV_DW9718AF, DW9718AF_SetI2Cclient, DW9718AF_Ioctl,
 	 DW9718AF_Release, DW9718AF_GetFileName, NULL},
 	{1, AFDRV_GT9764AF, GT9764AF_SetI2Cclient, GT9764AF_Ioctl,

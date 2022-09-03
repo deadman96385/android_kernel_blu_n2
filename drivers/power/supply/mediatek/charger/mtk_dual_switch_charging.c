@@ -20,6 +20,35 @@
 #include "mtk_charger_intf.h"
 #include "mtk_dual_switch_charging.h"
 
+//prize sunshuai for 6516hx customer  20200929 start 
+#if defined(CONFIG_PRIZE_CHARGE_CTRL_HX)
+#include "prize_charge_limit.h"
+#endif
+//prize sunshuai for 6516hx customer  20200929 end
+
+/* begin, prize-sunshuai-20190315, add fuel gauge cw2015 */
+#if defined(CONFIG_MTK_CW2015_SUPPORT)
+extern int g_cw2015_capacity;
+extern int g_cw2015_vol;
+extern int cw2015_exit_flag;
+#endif
+/* end, prize-sunshuai-20190315, add fuel gauge cw2015 */
+//start add by sunshuai for Bright screen current limit  20181130
+
+#if defined(CONFIG_PRIZE_CHARGE_CTRL_POLICY)
+extern int g_charge_is_screen_on;
+#endif
+//end add by sunshuai for Bright screen current limit   20181130
+//prize added by sunshuai, wireless charge MT5725   15W soft start, 20200428-start
+#if defined(CONFIG_PRIZE_MT5725_SUPPORT_15W)
+struct charger_manager *mt5725_info;
+extern int reset_mt5725_info(void);
+extern int get_MT5725_status(void);
+extern int get_wireless_charge_current(struct charger_data *pdata);
+static int MT5725_init(struct charger_manager *info);
+extern void En_Dis_add_current(int i);
+#endif
+//prize added by sunshuai, wireless charge MT5725   15W soft start, 20200428-end
 static int _uA_to_mA(int uA)
 {
 	if (uA == -1)
@@ -279,6 +308,50 @@ dual_swchg_select_charging_current_limit(struct charger_manager *info)
 					info->data.non_std_ac_charger_current;
 		pdata->charging_current_limit =
 					info->data.non_std_ac_charger_current;
+	//prize added by sunshuai, wireless charge MT5725   15W soft start, 20200428-start
+#if defined(CONFIG_PRIZE_NONSTANDARD_CHARGER)
+		mtk_pe20_set_charging_current(info,
+					&pdata->charging_current_limit,
+					&pdata->input_current_limit);
+		mtk_pe_set_charging_current(info,
+					&pdata->charging_current_limit,
+					&pdata->input_current_limit);
+	
+	/* Only enable slave charger when PE+/PE+2.0 is connected */
+		if ((mtk_pe20_get_is_enable(info) &&
+		    mtk_pe20_get_is_connect(info))
+		    || (mtk_pe_get_is_enable(info) &&
+		    mtk_pe_get_is_connect(info))) {
+
+			/* Slave charger may not have input current control */
+			pdata2->input_current_limit
+					= info->data.non_std_ac_charger_current;
+
+			switch (swchgalg->state) {
+			case CHR_CC:
+				pdata->charging_current_limit
+					= info->data.non_std_ac_charger_current;
+				pdata2->charging_current_limit
+					= info->data.non_std_ac_charger_current;
+				break;
+			case CHR_TUNING:
+				pdata->charging_current_limit
+					= info->data.non_std_ac_charger_current;
+				break;
+			default:
+				break;
+			}
+		}
+#endif
+	//prize added by sunshuai, wireless charge MT5725   15W soft start, 20200428-end	
+//prize added by sunshuai, wireless charge MT5725   15W soft start, 20200428-start
+#if defined(CONFIG_PRIZE_MT5725_SUPPORT_15W)
+		if((info->chr_type == NONSTANDARD_CHARGER) && (get_MT5725_status() == 0)){
+			get_wireless_charge_current(pdata);
+			chr_err("wireless charge current input_current_limit %d: charging_current_limit %d\n",pdata->input_current_limit,pdata->charging_current_limit);
+		}
+#endif
+//prize added by sunshuai, wireless charge MT5725   15W soft start, 20200428-end
 	} else if (info->chr_type == STANDARD_CHARGER) {
 		pdata->input_current_limit =
 					info->data.ac_charger_input_current;
@@ -345,6 +418,35 @@ dual_swchg_select_charging_current_limit(struct charger_manager *info)
 			}
 		}
 	}
+
+//start add by sunshuai for Bright screen current limit  20181130
+#if defined(CONFIG_PRIZE_CHARGE_CTRL_POLICY)
+		if (g_charge_is_screen_on){
+			if (pdata->charging_current_limit > 1000000){
+				pdata->charging_current_limit = 1000000;
+			}
+			if (pdata->input_current_limit > 1000000){
+				pdata->input_current_limit = 1000000;
+			}
+//start add by sunshuai for Bright screen current limit  for master charge	2019-0429
+			if ((mtk_pe20_get_is_enable(info) && mtk_pe20_get_is_connect(info))
+				|| (mtk_pe_get_is_enable(info) && mtk_pe_get_is_connect(info))){
+				pdata->input_current_limit = 700000;
+				pdata->charging_current_limit = 1000000;
+			}
+		}
+		printk("PRIZE master  charge current %d:%d\n",pdata->input_current_limit,pdata->charging_current_limit);
+		printk("PRIZE slave   charge current %d:%d\n",pdata2->input_current_limit,pdata2->charging_current_limit);
+//end add by sunshuai for Bright screen current limit  for master charge  2019-0429
+	
+#endif
+//end add by sunshuai for Bright screen current limit	   20181130
+
+//prize sunshuai for 6516hx customer  20200929 start 
+#if defined(CONFIG_PRIZE_CHARGE_CTRL_HX)
+     prize_set_charge_limit(pdata);
+#endif
+//prize sunshuai for 6516hx customer  20200929 end 
 
 	/*
 	 * If thermal current limit is less than charging IC's minimum
@@ -534,6 +636,13 @@ static void swchg_select_cv(struct charger_manager *info)
 
 	/* dynamic cv*/
 	constant_voltage = info->data.battery_cv;
+
+//prize sunshuai for 6516hx customer  20200929 start 
+#if defined(CONFIG_PRIZE_CHARGE_CTRL_HX)
+	constant_voltage = prize_get_cv_limit(info);
+#endif
+//prize sunshuai for 6516hx customer  20200929 end 
+
 	mtk_get_dynamic_cv(info, &constant_voltage);
 
 	charger_dev_set_constant_voltage(info->chg1_dev, constant_voltage);
@@ -549,6 +658,11 @@ static void dual_swchg_turn_on_charging(struct charger_manager *info)
 	bool chg1_enable = true;
 	bool chg2_enable = true;
 	bool chg2_chip_enabled = false;
+//prize-add by sunshuai for German customer gigast requires charging to be controlled according to the battery specification 20190617 start
+#if defined(CONFIG_PRIZE_CHARGE_CURRENT_CTRL_GIGAST) || defined(CONFIG_PRIZE_CHARGE_CTRL_POLICY)
+	bool chg2_hv_enable = true;
+#endif
+//prize-add by sunshuai for German customer gigast requires charging to be controlled according to the battery specification 20190617 end
 
 	charger_dev_is_chip_enabled(info->chg2_dev, &chg2_chip_enabled);
 
@@ -596,6 +710,14 @@ static void dual_swchg_turn_on_charging(struct charger_manager *info)
 
 	charger_dev_enable(info->chg1_dev, chg1_enable);
 
+//start add by sunshuai for Bright screen current limit close sencod charge 2019-0429
+#if defined(CONFIG_PRIZE_CHARGE_CTRL_POLICY)
+	if(g_charge_is_screen_on ==1){
+		chg2_enable = false;
+		chg2_hv_enable = false;
+	}
+#endif
+//end add by sunshuai for Bright screen current limit close sencod charge 2019-0429
 	if (chg2_enable == true) {
 		if ((mtk_pe20_get_is_enable(info) &&
 		    mtk_pe20_get_is_connect(info))
@@ -633,10 +755,30 @@ static void dual_swchg_turn_on_charging(struct charger_manager *info)
 			charger_dev_enable(info->chg2_dev, false);
 			charger_dev_enable_chip(info->chg2_dev, false);
 		}
+//start add by sunshuai for Bright screen current limit close sencod charge 2019-0429
+#if defined(CONFIG_PRIZE_CHARGE_CURRENT_CTRL_GIGAST) || defined(CONFIG_PRIZE_CHARGE_CTRL_POLICY)
+		if(chg2_hv_enable  == false){
+/* prize modify by liaoxingen for charge time 2021029 start */
+#if defined(CONFIG_PRIZE_CHARGE_CTRL_BDI)
+			charger_dev_set_eoc_current(info->chg1_dev, 200000);
+#else
+			charger_dev_set_eoc_current(info->chg1_dev, 150000);
+#endif
+/* prize modify by liaoxingen 2021029 end */
+			charger_dev_enable_termination(info->chg1_dev, true);
+		}
+#endif
+//end add by sunshuai for Bright screen current limit close sencod charge 2019-0429
+
 	}
 
-	/* If chg1 or chg2 is disabled, leave PE+/PE+20 charging */
-	if (chg1_enable == false || chg2_enable == false) {
+//prize-add by sunshuai for German customer gigast requires charging to be controlled according to the battery specification 20190617 start
+#if defined(CONFIG_PRIZE_CHARGE_CURRENT_CTRL_GIGAST) || defined(CONFIG_PRIZE_CHARGE_CTRL_POLICY)
+	if (chg1_enable == false || (chg2_enable == false && chg2_hv_enable  == true))
+#else
+    if (chg1_enable == false || chg2_enable == false)
+#endif
+    {
 		if (mtk_pe20_get_is_enable(info)) {
 			mtk_pe20_set_is_enable(info, false);
 			if (mtk_pe20_get_is_connect(info))
@@ -668,6 +810,19 @@ static int mtk_dual_switch_charging_plug_in(struct charger_manager *info)
 {
 	struct dual_switch_charging_alg_data *swchgalg = info->algorithm_data;
 
+//prize added by sunshuai, wireless charge MT5725   15W soft start, 20200428-start
+#if defined(CONFIG_PRIZE_MT5725_SUPPORT_15W)
+    if((info->chr_type == NONSTANDARD_CHARGER) && (get_MT5725_status() == 0))
+		En_Dis_add_current(0x00);
+#endif
+//prize added by sunshuai, wireless charge MT5725   15W soft start, 20200428-end
+
+//prize sunshuai for 6516hx customer  20200929 start 
+#if defined(CONFIG_PRIZE_CHARGE_CTRL_HX)
+    reset_prize_limit_info();
+#endif
+//prize sunshuai for 6516hx customer  20200929 end 
+
 	swchgalg->state = CHR_CC;
 	info->polling_interval = CHARGING_INTERVAL;
 	swchgalg->disable_charging = false;
@@ -677,6 +832,18 @@ static int mtk_dual_switch_charging_plug_in(struct charger_manager *info)
 
 static int mtk_dual_switch_charging_plug_out(struct charger_manager *info)
 {
+//prize added by sunshuai, wireless charge MT5725   15W soft start, 20200428-start
+#if defined(CONFIG_PRIZE_MT5725_SUPPORT_15W)
+	   reset_mt5725_info();
+#endif
+//prize added by sunshuai, wireless charge MT5725   15W soft start, 20200428-end
+
+//prize sunshuai for 6516hx customer  20200929 start 
+#if defined(CONFIG_PRIZE_CHARGE_CTRL_HX)
+    reset_prize_limit_info();
+#endif
+//prize sunshuai for 6516hx customer  20200929 end 
+
 	mtk_pe20_set_is_cable_out_occur(info, true);
 	mtk_pe_set_is_cable_out_occur(info, true);
 	mtk_pdc_plugout(info);
@@ -864,6 +1031,23 @@ static int mtk_dual_switch_charge_current(struct charger_manager *info)
 	return 0;
 }
 
+#if defined(CONFIG_PRIZE_MT5725_SUPPORT_15W)
+int wireless_charge_chage_current(void)
+{
+//prize add by lipengpeng 20210616 start 
+	if(mt5725_info==NULL){
+	printk("lpp----mt5725_info is null\n");
+	}else{
+//prize add by lipengpeng 20210616 end 
+	dual_swchg_select_charging_current_limit(mt5725_info);
+//prize add by lipengpeng 20210616 start 
+	}
+//prize add by lipengpeng 20210616 end 
+	return 0;
+}
+EXPORT_SYMBOL(wireless_charge_chage_current);
+#endif
+
 static int mtk_dual_switch_charging_run(struct charger_manager *info)
 {
 	struct dual_switch_charging_alg_data *swchgalg = info->algorithm_data;
@@ -879,6 +1063,12 @@ static int mtk_dual_switch_charging_run(struct charger_manager *info)
 			mtk_pe_check_charger(info);
 	}
 
+//prize added by huarui, eta6937 support, 20190111-start
+#if defined(CONFIG_HL7005ALL_CHARGER_SUPPORT)
+//	charger_dev_kick_wdt(info->chg1_dev);	//PRIZE
+	charger_dev_kick_wdt(info->chg2_dev);	//PRIZE
+#endif
+//prize added by huarui, eta6937 support, 20190111-end
 	switch (swchgalg->state) {
 	case CHR_CC:
 	case CHR_TUNING:
@@ -925,11 +1115,31 @@ int dual_charger_dev_event(struct notifier_block *nb, unsigned long event,
 	bool chg_en = false;
 	bool chg2_chip_enabled = false;
 
+//start add by sunshuai for Bright screen current limit close sencod charge 2019-0429
+#if defined(CONFIG_PRIZE_CHARGE_CTRL_POLICY)
+	bool chg2_hv_event = true;
+#endif
+//start add by sunshuai for Bright screen current limit close sencod charge 2019-0429
 	charger_dev_is_chip_enabled(info->chg2_dev, &chg2_chip_enabled);
 
 	chr_info("charger_dev_event %ld\n", event);
 
-	if (event == CHARGER_DEV_NOTIFY_EOC) {
+//start add by sunshuai for Bright screen current limit close sencod charge 2019-0429
+#if defined(CONFIG_PRIZE_CHARGE_CTRL_POLICY)&&defined(CONFIG_MTK_CW2015_SUPPORT)
+	if((g_charge_is_screen_on == 1) && (g_cw2015_capacity < 100))
+		chg2_hv_event = false;
+#elif defined(CONFIG_PRIZE_CHARGE_CTRL_POLICY)
+	if(g_charge_is_screen_on == 1)
+		chg2_hv_event = false;
+#endif
+//start add by sunshuai for Bright screen current limit close sencod charge 2019-0429
+//prize start  modify  by sunshuai for Bright screen current limit close sencod charge 2019-0429
+#if defined(CONFIG_PRIZE_CHARGE_CTRL_POLICY) || defined(CONFIG_PRIZE_CHARGE_CURRENT_CTRL_GIGAST)
+    if ((event == CHARGER_DEV_NOTIFY_EOC)&& (chg2_hv_event == true)){ 
+#else
+    if (event == CHARGER_DEV_NOTIFY_EOC) {
+#endif
+//prize end  modify	by sunshuai for Bright screen current limit close sencod charge 2019-0429
 		charger_dev_is_enabled(info->chg2_dev, &chg_en);
 
 		if (!chg_en || !chg2_chip_enabled) {
@@ -1026,6 +1236,11 @@ int mtk_dual_switch_charging_init(struct charger_manager *info)
 
 	mutex_init(&swch_alg->ichg_aicr_access_mutex);
 
+//prize added by sunshuai, wireless charge MT5715  soft start, 20190302-start
+#if defined(CONFIG_PRIZE_MT5725_SUPPORT_15W)
+    MT5725_init(info);
+#endif
+//prize added by sunshuai, wireless charge MT5715  soft start, 20190302-end
 	info->algorithm_data = swch_alg;
 	info->do_algorithm = mtk_dual_switch_charging_run;
 	info->plug_in = mtk_dual_switch_charging_plug_in;
@@ -1036,3 +1251,9 @@ int mtk_dual_switch_charging_init(struct charger_manager *info)
 
 	return 0;
 }
+#if defined(CONFIG_PRIZE_MT5725_SUPPORT_15W)
+static int MT5725_init(struct charger_manager *info){
+    mt5725_info = info;
+	return 0;
+}
+#endif

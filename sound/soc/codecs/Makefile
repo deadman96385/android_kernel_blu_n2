@@ -512,3 +512,31 @@ ifeq ($(CONFIG_SND_SOC_MT6359),y)
   subdir-ccflags-y += -Werror -I$(srctree)/drivers/misc/mediatek/include/mt-plat/$(MTK_PLATFORM)/include
   subdir-ccflags-y += -Werror -I$(srctree)/drivers/misc/mediatek/accdet/mt6359
 endif
+
+# prize modified by lifenfen, add awinic smartpa aw8898, 20200103 begin
+obj-$(CONFIG_SND_SOC_AW8898)    += aw8898/
+# prize modified by lifenfen, add awinic smartpa aw8898, 20200103 end
+# prize modified by wyq, add awinic smartpa aw881xx, 20200103 begin
+obj-$(CONFIG_SND_SMARTPA_AW881XX)    += aw881xx/
+obj-$(CONFIG_SND_SMARTPA_AW881XX_V2)    += aw881xx_v2/
+# prize modified by wyq, add awinic smartpa aw881xx, 20200103 end
+# prize modified by liaoxingen, add awinic smartpa aw881xx, 20200601 begin
+obj-$(CONFIG_SND_SMARTPA_AW88194A_NEW)    += aw88194a/
+# prize modified by liaoxingen, add awinic smartpa aw881xx, 20200601 end 
+
+# prize add by wuhui aw881xx, 20210623 start
+obj-$(CONFIG_SND_SMARTPA_AW881XX_V1_3_0)    += aw881xx_v1_3_0/
+# prize add by wuhui aw881xx, 20210623 end
+
+# prize add by huarui, add foursemi smartpa fs1894u, 20200103 begin
+obj-$(CONFIG_SND_SOC_FS16XX)    += foursemi/
+# prize add by huarui, add foursemi smartpa fs1894u, 20200103 end
+# prize add by huarui, add igo ig1202 codec, 20200103 begin
+obj-$(CONFIG_SND_SOC_DEBUSSY)    += debussy/
+# prize add by huarui, add igo ig1202 codec, 20200103 end
+# prize added by chenjiaxi, add aw87519, 20200918-start
+obj-$(CONFIG_SND_SOC_AW87519)    += aw87519/
+# prize added by chenjiaxi, add aw87519, 20200918-end
+#prize add by huarui, aw8736 support, start
+obj-$(CONFIG_SND_SOC_AW8736)	+= aw8736.o
+#prize add by huarui, aw8736 support, end

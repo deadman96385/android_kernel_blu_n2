@@ -688,6 +688,10 @@ void arch_reset(char mode, const char *cmd)
 		reboot = WD_SW_RESET_BYPASS_PWR_KEY;
 	} else if (cmd && !strcmp(cmd, "kpoc")) {
 		rtc_mark_kpoc();
+/* prize-lifenfen-20170822, add for prize reboot*/
+	}else if (cmd && !strcmp(cmd, "prize")) {
+        rtc_mark_prizereboot();
+/* end */
 	} else {
 		reboot = WD_SW_RESET_BYPASS_PWR_KEY;
 	}

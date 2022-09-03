@@ -182,14 +182,32 @@ void mt_usbhost_disconnect(void)
 }
 EXPORT_SYMBOL_GPL(mt_usbhost_disconnect);
 
+//prize added by huarui, MT5725, 20210205-start
+#if defined(CONFIG_PRIZE_MT5725_SUPPORT_15W)
+extern int set_otg_gpio(int en);
+extern int turn_off_5725(int en);
+#endif
+//prize added by huarui, MT5725, 20210205-end
 void mt_vbus_on(void)
 {
+//prize added by huarui, MT5725, 20210205-start
+#if defined(CONFIG_PRIZE_MT5725_SUPPORT_15W)
+	turn_off_5725(1);
+	set_otg_gpio(1);
+#endif
+//prize added by huarui, MT5725, 20210205-end
 	usb_otg_set_vbus(true);
 }
 EXPORT_SYMBOL_GPL(mt_vbus_on);
 
 void mt_vbus_off(void)
 {
+//prize added by huarui, MT5725, 20210205-start
+#if defined(CONFIG_PRIZE_MT5725_SUPPORT_15W)
+	set_otg_gpio(0);
+	turn_off_5725(0);
+#endif
+//prize added by huarui, MT5725, 20210205-end
 	usb_otg_set_vbus(false);
 }
 EXPORT_SYMBOL_GPL(mt_vbus_off);

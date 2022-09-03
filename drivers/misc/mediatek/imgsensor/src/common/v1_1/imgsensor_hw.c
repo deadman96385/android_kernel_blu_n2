@@ -20,6 +20,10 @@
 #include "imgsensor_sensor.h"
 #include "imgsensor_hw.h"
 
+/* prize add by linchong 20210521 for bf2253macro start */
+int curr_sensor_id = 0;
+/* prize add by linchong 20210521 for bf2253macro end */
+
 enum IMGSENSOR_RETURN imgsensor_hw_init(struct IMGSENSOR_HW *phw)
 {
 	struct IMGSENSOR_HW_SENSOR_POWER      *psensor_pwr;
@@ -210,6 +214,9 @@ enum IMGSENSOR_RETURN imgsensor_hw_power(
 		phw->enable_sensor_by_index[(uint32_t)sensor_idx] == NULL
 		? "NULL"
 		: phw->enable_sensor_by_index[(uint32_t)sensor_idx]);
+// prize add by linchong 20210521 for bf2253macro start
+	curr_sensor_id = sensor_idx;
+// prize add by linchong 20210521 bf2253macro end
 
 	if (phw->enable_sensor_by_index[(uint32_t)sensor_idx] &&
 	!strstr(phw->enable_sensor_by_index[(uint32_t)sensor_idx], curr_sensor_name))

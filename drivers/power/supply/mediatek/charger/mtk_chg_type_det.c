@@ -51,7 +51,9 @@
 #include <tcpm.h>
 
 #include "mtk_charger_intf.h"
-
+#if defined(CONFIG_PRIZE_SUPPORT_HX_ADAPTER)
+extern bool is_usb_plug_in;
+#endif
 #ifdef CONFIG_EXTCON_USB_CHG
 struct usb_extcon_info {
 	struct device *dev;
@@ -381,13 +383,28 @@ static int pd_tcp_notifier_call(struct notifier_block *pnb,
 		if (noti->typec_state.old_state == TYPEC_UNATTACHED &&
 		    (noti->typec_state.new_state == TYPEC_ATTACHED_SNK ||
 		    noti->typec_state.new_state == TYPEC_ATTACHED_CUSTOM_SRC ||
-		    noti->typec_state.new_state == TYPEC_ATTACHED_NORP_SRC)) {
+		    noti->typec_state.new_state == TYPEC_ATTACHED_NORP_SRC
+/*prize add by sunshuai for A-C 30w charge 20201109-start */
+#ifdef CONFIG_PRIZE_ATOC_TYPEC_CHARGE
+			|| noti->typec_state.new_state == TYPEC_ATTACHED_DBGACC_SNK
+#endif
+/*prize add by sunshuai for A-C 30w charge 20201109-start */
+           )) {
+#if defined(CONFIG_PRIZE_SUPPORT_HX_ADAPTER)
+			is_usb_plug_in = 1;
+#endif
 			pr_info("%s USB Plug in, pol = %d\n", __func__,
 					noti->typec_state.polarity);
 			plug_in_out_handler(cti, true, false);
 		} else if ((noti->typec_state.old_state == TYPEC_ATTACHED_SNK ||
 		    noti->typec_state.old_state == TYPEC_ATTACHED_CUSTOM_SRC ||
-			noti->typec_state.old_state == TYPEC_ATTACHED_NORP_SRC)
+			noti->typec_state.old_state == TYPEC_ATTACHED_NORP_SRC
+#ifdef CONFIG_PRIZE_ATOC_TYPEC_CHARGE			
+/*prize add by sunshuai for A-C 30w charge 20201109-start */
+			||noti->typec_state.old_state == TYPEC_ATTACHED_DBGACC_SNK
+/*prize add by sunshuai for A-C 30w charge 20201109-start */
+#endif
+			)
 			&& noti->typec_state.new_state == TYPEC_UNATTACHED) {
 			if (cti->tcpc_kpoc) {
 				vbus = battery_get_vbus();
@@ -398,6 +415,9 @@ static int pd_tcp_notifier_call(struct notifier_block *pnb,
 					      &cti->pwr_off_work);
 				break;
 			}
+#if defined(CONFIG_PRIZE_SUPPORT_HX_ADAPTER)
+			is_usb_plug_in = 0;
+#endif
 			pr_info("%s USB Plug out\n", __func__);
 			plug_in_out_handler(cti, false, false);
 		} else if (noti->typec_state.old_state == TYPEC_ATTACHED_SRC &&

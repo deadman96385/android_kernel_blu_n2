@@ -163,6 +163,9 @@ enum rtc_spare_enum {
 	RTC_32K_LESS,
 	RTC_LP_DET,
 	RTC_FG_INIT,
+/* prize-lifenfen-20170822, add for prize reboot*/	
+	RTC_PRIZE_BOOT,//15
+/* end */
 	RTC_SPAR_NUM
 };
 
@@ -187,7 +190,8 @@ u16 rtc_spare_reg[RTC_SPAR_NUM][3] = {
 	{RTC_PDN2, 0x1, 15},
 	{RTC_SPAR0, 0x1, 6},
 	{RTC_SPAR0, 0x1, 7},
-	{RTC_AL_HOU, 0xff, 8}
+	{RTC_AL_HOU, 0xff, 8},
+	{RTC_SPAR0, 0x1, 8} //15 prize wyq 20191113 prize reboot mode
 };
 
 /*
@@ -657,6 +661,18 @@ static void mtk_rtc_clear_alarm(void)
 exit:
 	pr_err("%s error\n", __func__);
 }
+
+/* prize-lifenfen-20170822, add for prize reboot*/
+void rtc_mark_prizereboot(void)
+{
+	unsigned long flags;
+
+	pr_notice("cjx:rtc_mark_prizereboot\n");
+	spin_lock_irqsave(&rtc_misc->lock, flags);
+	mtk_rtc_set_spare_register(RTC_PRIZE_BOOT, 0x1);
+	spin_unlock_irqrestore(&rtc_misc->lock, flags);
+}
+/* end */
 
 void rtc_mark_recovery(void)
 {

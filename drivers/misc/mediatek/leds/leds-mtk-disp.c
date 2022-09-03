@@ -165,10 +165,13 @@ static int getLedDespIndex(char *name)
 static int led_level_disp_set(struct mtk_led_data *s_led,
 	int brightness)
 {
-
-	brightness = min(brightness, s_led->conf.max_level);
+     //prize add by wangfei for del max brightness limit 20210929
+	// brightness = min(brightness, s_led->conf.max_level);
 	if (brightness == s_led->conf.level)
+	{
+		pr_info("wolf brightness return 2\n");
 		return 0;
+	}
 
 #ifdef MET_USER_EVENT_SUPPORT
 	if (enable_met_backlight_tag())
@@ -259,7 +262,10 @@ static int led_level_set(struct led_classdev *led_cdev,
 		container_of(led_conf, struct mtk_led_data, conf);
 
 	if (led_dat->brightness == brightness)
+	{
+		pr_info("wolf brightness return 1\n");
 		return 0;
+	}
 
 	trans_level = (
 		(((1 << led_dat->conf.trans_bits) - 1) * brightness

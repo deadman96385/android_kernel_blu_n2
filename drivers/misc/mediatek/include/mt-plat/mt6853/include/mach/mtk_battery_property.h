@@ -31,7 +31,9 @@
 #define SHUTDOWN_GAUGE0 1
 
 /* enable that uisoc = 1 and wait xmins then shutdown */
-#define SHUTDOWN_GAUGE1_XMINS 1
+/* Prize HanJiuping modified 20210719 for disable GM uisoc = 1 shutdown start */
+#define SHUTDOWN_GAUGE1_XMINS 0
+/* Prize HanJiuping modified 20210719 for disable GM uisoc = 1 shutdown end */
 /* define Xmins to shutdown*/
 #define SHUTDOWN_1_TIME	5
 
@@ -174,6 +176,7 @@
 /* ZCV INTR */
 #define ZCV_SUSPEND_TIME 3
 #define SLEEP_CURRENT_AVG 200 /*0.1mA*/
+#define ZCV_COM_VOL_LIMIT 50 /* 50mv */
 #define ZCV_CAR_GAP_PERCENTAGE 5
 
 /* Additional battery table */

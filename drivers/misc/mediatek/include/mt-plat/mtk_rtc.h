@@ -46,6 +46,9 @@ extern void rtc_enable_writeif(void);
 extern void rtc_disable_writeif(void);
 
 extern void rtc_mark_recovery(void);
+/* prize-lifenfen-20170822, add for prize reboot*/
+extern void rtc_mark_prizereboot(void);
+/* end */
 extern void rtc_mark_kpoc(void);
 extern void rtc_mark_fast(void);
 extern u16 rtc_rdwr_uart_bits(u16 *val);
@@ -75,6 +78,9 @@ extern bool crystal_exist_status(void);
 #define rtc_gpio_enable_32k(user)	({ 0; })
 #define rtc_gpio_disable_32k(user)	({ 0; })
 #define rtc_mark_recovery()             ({ 0; })
+/* prize-lifenfen-20170822, add for prize reboot*/
+#define rtc_mark_prizereboot()		({ 0; })
+/* end */
 #define rtc_mark_kpoc()                 ({ 0; })
 #define rtc_mark_fast()		        ({ 0; })
 #define rtc_read_pwron_alarm(alm)	({ 0; })

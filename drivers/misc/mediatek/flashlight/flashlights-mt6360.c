@@ -82,6 +82,8 @@ static struct charger_consumer *flashlight_charger_consumer;
 /* is decrease voltage */
 static int is_decrease_voltage;
 
+static int led_num = -1;
+
 /* platform data */
 struct mt6360_platform_data {
 	int channel_num;
@@ -98,7 +100,8 @@ static const int mt6360_current[MT6360_LEVEL_NUM] = {
 	 650,  700, 750, 800, 850, 900, 950, 1000, 1050, 1100,
 	1150, 1200
 };
-
+//modify by yantaotao for flashlight start
+#if 0
 static const unsigned char mt6360_torch_level[MT6360_LEVEL_TORCH] = {
 	0x00, 0x02, 0x04, 0x06, 0x08, 0x0A, 0x0C, 0x0E, 0x10, 0x12,
 	0x14, 0x16, 0x18, 0x1A, 0x1C, 0x1E
@@ -111,6 +114,21 @@ static const unsigned char mt6360_strobe_level[MT6360_LEVEL_FLASH] = {
 	0x64, 0x6C, 0x74, 0x78, 0x7C, 0x80, 0x84, 0x88, 0x8C, 0x90,
 	0x94, 0x98
 };
+#else
+static const unsigned char mt6360_torch_level[MT6360_LEVEL_TORCH] = {
+	0x00, 0x01, 0x01, 0x03, 0x04, 0x05, 0x06, 0x07, 0x08, 0x09,
+	0x0a, 0x0b, 0x0c, 0x0d, 0x0e, 0x0f
+};
+
+/* 0x00~0x74 6.25mA/step 0x75~0xB1 12.5mA/step */
+static const unsigned char mt6360_strobe_level[MT6360_LEVEL_FLASH] = {
+	0x00, 0x02, 0x04, 0x06, 0x08, 0x0a, 0x0c, 0x0e, 0x10, 0x12,
+	0x14, 0x16, 0x18, 0x1a, 0x1c, 0x1e, 0x22, 0x26, 0x2a, 0x2e,
+	0x32, 0x36, 0x3a, 0x3c, 0x3e, 0x40, 0x42, 0x44, 0x86, 0x48,
+	0x4a, 0x4c
+};
+#endif
+//modify by yantaotao for flashlight end
 
 static int mt6360_decouple_mode;
 static int mt6360_en_ch1;
@@ -158,6 +176,7 @@ static int mt6360_verify_level(int level)
 	return level;
 }
 
+//modify by yantaotao for flashlight start
 /* flashlight enable function */
 static int mt6360_enable(void)
 {
@@ -178,35 +197,44 @@ static int mt6360_enable(void)
 		mt6360_en_ch1, mt6360_en_ch2, mode);
 
 	/* enable channel 1 and channel 2 */
-	if (mt6360_decouple_mode == FLASHLIGHT_SCENARIO_COUPLE &&
-			mt6360_en_ch1 != MT6360_DISABLE &&
-			mt6360_en_ch2 != MT6360_DISABLE) {
-		pr_info("dual flash mode\n");
-		if (mode == FLASHLIGHT_MODE_TORCH)
-			ret |= flashlight_set_mode(
-				flashlight_dev_ch1, FLASHLIGHT_MODE_DUAL_TORCH);
-		else
-			ret |= flashlight_set_mode(
-				flashlight_dev_ch1, FLASHLIGHT_MODE_DUAL_FLASH);
-	} else {
-		if (mt6360_en_ch1)
-			ret |= flashlight_set_mode(
-				flashlight_dev_ch1, mode);
-		else if (mt6360_decouple_mode == FLASHLIGHT_SCENARIO_COUPLE)
-			ret |= flashlight_set_mode(
-				flashlight_dev_ch1, FLASHLIGHT_MODE_OFF);
-		if (mt6360_en_ch2)
-			ret |= flashlight_set_mode(
-				flashlight_dev_ch2, mode);
-		else if (mt6360_decouple_mode == FLASHLIGHT_SCENARIO_COUPLE)
-			ret |= flashlight_set_mode(
-				flashlight_dev_ch2, FLASHLIGHT_MODE_OFF);
+	if (mt6360_en_ch1){
+		ret |= flashlight_set_mode(flashlight_dev_ch1, mode);
 	}
+	if(mt6360_en_ch2){
+		ret |= flashlight_set_mode(flashlight_dev_ch2, mode);
+	}
+	
+	
+	// if (mt6360_decouple_mode == FLASHLIGHT_SCENARIO_COUPLE &&
+			// mt6360_en_ch1 != MT6360_DISABLE &&
+			// mt6360_en_ch2 != MT6360_DISABLE) {
+		// pr_info("dual flash mode\n");
+		// if (mode == FLASHLIGHT_MODE_TORCH)
+			// ret |= flashlight_set_mode(
+				// flashlight_dev_ch1, FLASHLIGHT_MODE_DUAL_TORCH);
+		// else
+			// ret |= flashlight_set_mode(
+				// flashlight_dev_ch1, FLASHLIGHT_MODE_DUAL_FLASH);
+	// } else {
+		// if (mt6360_en_ch1)
+			// ret |= flashlight_set_mode(
+				// flashlight_dev_ch1, mode);
+		// else if (mt6360_decouple_mode == FLASHLIGHT_SCENARIO_COUPLE)
+			// ret |= flashlight_set_mode(
+				// flashlight_dev_ch1, FLASHLIGHT_MODE_OFF);
+		// if (mt6360_en_ch2)
+			// ret |= flashlight_set_mode(
+				// flashlight_dev_ch2, mode);
+		// else if (mt6360_decouple_mode == FLASHLIGHT_SCENARIO_COUPLE)
+			// ret |= flashlight_set_mode(
+				// flashlight_dev_ch2, FLASHLIGHT_MODE_OFF);
+	// }
 	if (ret < 0)
 		pr_info("Failed to enable.\n");
 
 	return ret;
 }
+//modify by yantaotao for flashlight end
 
 /* flashlight disable function */
 static int mt6360_disable_ch1(void)
@@ -247,25 +275,32 @@ static int mt6360_disable_ch2(void)
 	return ret;
 }
 
+//modify by yantaotao for flashlight start
 static int mt6360_disable_all(void)
 {
 	int ret = 0;
 
-	pr_debug("disable_ch1.\n");
+	pr_debug("disable_all.\n");
 
 	if (!flashlight_dev_ch1) {
 		pr_info("Failed to disable since no flashlight device.\n");
 		return -1;
 	}
+	
+	if (!flashlight_dev_ch2) {
+		pr_info("Failed to disable since no flashlight device.\n");
+		return -1;
+	}
 
-	ret |= flashlight_set_mode(flashlight_dev_ch1,
-		FLASHLIGHT_MODE_DUAL_OFF);
+	ret |= flashlight_set_mode(flashlight_dev_ch1, FLASHLIGHT_MODE_OFF);
+	ret |= flashlight_set_mode(flashlight_dev_ch2, FLASHLIGHT_MODE_OFF);
 
 	if (ret < 0)
 		pr_info("Failed to disable.\n");
 
 	return ret;
 }
+//modify by yantaotao for flashlight end
 
 static int mt6360_disable(int channel)
 {
@@ -298,8 +333,10 @@ static int mt6360_set_level_ch1(int level)
 
 	/* set brightness level */
 	if (!mt6360_is_torch(level))
+	{		
 		flashlight_set_torch_brightness(
 				flashlight_dev_ch1, mt6360_torch_level[level]);
+	}
 	flashlight_set_strobe_brightness(
 			flashlight_dev_ch1, mt6360_strobe_level[level]);
 
@@ -318,20 +355,27 @@ static int mt6360_set_level_ch2(int level)
 
 	/* set brightness level */
 	if (!mt6360_is_torch(level))
+	{		
 		flashlight_set_torch_brightness(
 				flashlight_dev_ch2, mt6360_torch_level[level]);
+	}
 	flashlight_set_strobe_brightness(
 			flashlight_dev_ch2, mt6360_strobe_level[level]);
 
 	return 0;
 }
 
+//modify by yantaotao for flashlight start
 static int mt6360_set_level(int channel, int level)
 {
 	if (channel == MT6360_CHANNEL_CH1)
 		mt6360_set_level_ch1(level);
 	else if (channel == MT6360_CHANNEL_CH2)
 		mt6360_set_level_ch2(level);
+	else if (channel == MT6360_CHANNEL_ALL) {
+		mt6360_set_level_ch1(level);
+		mt6360_set_level_ch2(level);
+	}
 	else {
 		pr_info("Error channel\n");
 		return -1;
@@ -339,6 +383,7 @@ static int mt6360_set_level(int channel, int level)
 
 	return 0;
 }
+//modify by yantaotao for flashlight end
 
 static int mt6360_set_scenario(int scenario)
 {
@@ -440,12 +485,17 @@ static enum hrtimer_restart mt6360_timer_func_ch2(struct hrtimer *timer)
 	return HRTIMER_NORESTART;
 }
 
+//modify by yantaotao for flashlight start
 static int mt6360_timer_start(int channel, ktime_t ktime)
 {
 	if (channel == MT6360_CHANNEL_CH1)
 		hrtimer_start(&mt6360_timer_ch1, ktime, HRTIMER_MODE_REL);
 	else if (channel == MT6360_CHANNEL_CH2)
 		hrtimer_start(&mt6360_timer_ch2, ktime, HRTIMER_MODE_REL);
+	else if (channel == MT6360_CHANNEL_ALL) {
+		hrtimer_start(&mt6360_timer_ch1, ktime, HRTIMER_MODE_REL);
+		hrtimer_start(&mt6360_timer_ch2, ktime, HRTIMER_MODE_REL);
+	} 
 	else {
 		pr_info("Error channel\n");
 		return -1;
@@ -460,7 +510,10 @@ static int mt6360_timer_cancel(int channel)
 		hrtimer_cancel(&mt6360_timer_ch1);
 	else if (channel == MT6360_CHANNEL_CH2)
 		hrtimer_cancel(&mt6360_timer_ch2);
-	else {
+	else if (channel == MT6360_CHANNEL_ALL) {
+		hrtimer_cancel(&mt6360_timer_ch1);
+		hrtimer_cancel(&mt6360_timer_ch2);
+	} else {
 		pr_info("Error channel\n");
 		return -1;
 	}
@@ -487,6 +540,16 @@ static int mt6360_operate(int channel, int enable)
 		mt6360_en_ch2 = enable;
 		if (mt6360_en_ch2)
 			if (mt6360_is_torch(mt6360_level_ch2))
+				mt6360_en_ch2 = MT6360_ENABLE_FLASH;	
+	} else if (channel == MT6360_CHANNEL_ALL) {
+		mt6360_en_ch1 = enable;
+		if (mt6360_en_ch1)
+			if (mt6360_is_torch(mt6360_level_ch1))
+				mt6360_en_ch1 = MT6360_ENABLE_FLASH;
+		
+		mt6360_en_ch2 = enable;
+		if (mt6360_en_ch2)
+			if (mt6360_is_torch(mt6360_level_ch2))
 				mt6360_en_ch2 = MT6360_ENABLE_FLASH;
 	} else {
 		pr_info("Error channel\n");
@@ -494,15 +557,15 @@ static int mt6360_operate(int channel, int enable)
 	}
 
 	/* decouple mode */
-	if (mt6360_decouple_mode) {
-		if (channel == MT6360_CHANNEL_CH1) {
-			mt6360_en_ch2 = MT6360_DISABLE;
-			mt6360_timeout_ms[MT6360_CHANNEL_CH2] = 0;
-		} else if (channel == MT6360_CHANNEL_CH2) {
-			mt6360_en_ch1 = MT6360_DISABLE;
-			mt6360_timeout_ms[MT6360_CHANNEL_CH1] = 0;
-		}
-	}
+	// if (mt6360_decouple_mode) {
+		// if (channel == MT6360_CHANNEL_CH1) {
+			// mt6360_en_ch2 = MT6360_DISABLE;
+			// mt6360_timeout_ms[MT6360_CHANNEL_CH2] = 0;
+		// } else if (channel == MT6360_CHANNEL_CH2) {
+			// mt6360_en_ch1 = MT6360_DISABLE;
+			// mt6360_timeout_ms[MT6360_CHANNEL_CH1] = 0;
+		// }
+	// }
 
 	pr_debug("en_ch(%d,%d), decouple:%d\n",
 		mt6360_en_ch1, mt6360_en_ch2, mt6360_decouple_mode);
@@ -510,28 +573,38 @@ static int mt6360_operate(int channel, int enable)
 	/* operate flashlight and setup timer */
 	if ((mt6360_en_ch1 != MT6360_NONE) && (mt6360_en_ch2 != MT6360_NONE)) {
 		if ((mt6360_en_ch1 == MT6360_DISABLE) &&
-				(mt6360_en_ch2 == MT6360_DISABLE)) {
-			if (mt6360_decouple_mode) {
-				if (channel == MT6360_CHANNEL_CH1) {
-					mt6360_disable(MT6360_CHANNEL_CH1);
-					mt6360_timer_cancel(MT6360_CHANNEL_CH1);
-				} else if (channel == MT6360_CHANNEL_CH2) {
-					mt6360_disable(MT6360_CHANNEL_CH2);
-					mt6360_timer_cancel(MT6360_CHANNEL_CH2);
-				}
-			} else {
-				mt6360_disable(MT6360_CHANNEL_ALL);
+				(mt6360_en_ch2 == MT6360_DISABLE)) {//disable 
+			// if (mt6360_decouple_mode) {
+				// if (channel == MT6360_CHANNEL_CH1) {
+					// mt6360_disable(MT6360_CHANNEL_CH1);
+					// mt6360_timer_cancel(MT6360_CHANNEL_CH1);
+				// } else if (channel == MT6360_CHANNEL_CH2) {
+					// mt6360_disable(MT6360_CHANNEL_CH2);
+					// mt6360_timer_cancel(MT6360_CHANNEL_CH2);
+				// }
+			// } else {
+				// mt6360_disable(MT6360_CHANNEL_ALL);
+				// mt6360_timer_cancel(MT6360_CHANNEL_CH1);
+				// mt6360_timer_cancel(MT6360_CHANNEL_CH2);
+			// }
+			if (channel == MT6360_CHANNEL_CH1) {
+				mt6360_disable(MT6360_CHANNEL_CH1);
 				mt6360_timer_cancel(MT6360_CHANNEL_CH1);
+			} else if (channel == MT6360_CHANNEL_CH2) {
+				mt6360_disable(MT6360_CHANNEL_CH2);
 				mt6360_timer_cancel(MT6360_CHANNEL_CH2);
+			} else if (channel == MT6360_CHANNEL_ALL) {
+				mt6360_disable(MT6360_CHANNEL_ALL);
+				mt6360_timer_cancel(MT6360_CHANNEL_ALL);
 			}
-		} else {
+		} else {//enable 
 			if (mt6360_timeout_ms[MT6360_CHANNEL_CH1] &&
 				mt6360_en_ch1 != MT6360_DISABLE) {
 				s = mt6360_timeout_ms[MT6360_CHANNEL_CH1] /
 					1000;
 				ns = mt6360_timeout_ms[MT6360_CHANNEL_CH1] %
 					1000 * 1000000;
-				ktime = ktime_set(s, ns);
+				ktime = ktime_set(s, ns);				
 				mt6360_timer_start(MT6360_CHANNEL_CH1, ktime);
 			}
 			if (mt6360_timeout_ms[MT6360_CHANNEL_CH2] &&
@@ -540,7 +613,7 @@ static int mt6360_operate(int channel, int enable)
 					1000;
 				ns = mt6360_timeout_ms[MT6360_CHANNEL_CH2] %
 					1000 * 1000000;
-				ktime = ktime_set(s, ns);
+				ktime = ktime_set(s, ns);				
 				mt6360_timer_start(MT6360_CHANNEL_CH2, ktime);
 			}
 			mt6360_enable();
@@ -574,14 +647,15 @@ static int mt6360_ioctl(unsigned int cmd, unsigned long arg)
 	switch (cmd) {
 	case FLASH_IOC_SET_TIME_OUT_TIME_MS:
 		pr_debug("FLASH_IOC_SET_TIME_OUT_TIME_MS(%d): %d\n",
-				channel, (int)fl_arg->arg);
-		mt6360_timeout_ms[channel] = fl_arg->arg;
+				led_num, (int)fl_arg->arg);
+		mt6360_timeout_ms[MT6360_CHANNEL_CH1] = fl_arg->arg;
+		mt6360_timeout_ms[MT6360_CHANNEL_CH2] = fl_arg->arg;
 		break;
 
 	case FLASH_IOC_SET_DUTY:
 		pr_debug("FLASH_IOC_SET_DUTY(%d): %d\n",
-				channel, (int)fl_arg->arg);
-		mt6360_set_level(channel, fl_arg->arg);
+				led_num, (int)fl_arg->arg);
+		mt6360_set_level(led_num, fl_arg->arg);
 		break;
 
 	case FLASH_IOC_SET_SCENARIO:
@@ -592,8 +666,8 @@ static int mt6360_ioctl(unsigned int cmd, unsigned long arg)
 
 	case FLASH_IOC_SET_ONOFF:
 		pr_debug("FLASH_IOC_SET_ONOFF(%d): %d\n",
-				channel, (int)fl_arg->arg);
-		mt6360_operate(channel, fl_arg->arg);
+				led_num, (int)fl_arg->arg);
+		mt6360_operate(led_num, fl_arg->arg);
 		break;
 
 	case FLASH_IOC_IS_CHARGER_READY:
@@ -632,6 +706,7 @@ static int mt6360_ioctl(unsigned int cmd, unsigned long arg)
 
 	return 0;
 }
+//modify by yantaotao for flashlight end
 
 static int mt6360_open(void)
 {
@@ -754,6 +829,9 @@ static int mt6360_parse_dt(struct device *dev,
 	if (of_property_read_u32(np, "decouple", &decouple))
 		pr_info("Parse no dt, decouple.\n");
 
+	if (of_property_read_u32(np, "led_num", &led_num))
+		pr_info("Parse no dt, led_num.\n");
+	
 	pdata->dev_id = devm_kzalloc(dev,
 			pdata->channel_num *
 			sizeof(struct flashlight_device_id),

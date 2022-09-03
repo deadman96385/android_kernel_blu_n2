@@ -25,6 +25,14 @@ int __attribute__((weak)) charger_get_vbus(void)
 {
 	return 4500;
 }
+//prize add by lipengpeng 20210202 start 
+#if defined(CONFIG_MTK_CW2015_SUPPORT)
+extern int g_cw2015_capacity;
+extern int g_cw2015_vol;
+extern int cw2015_exit_flag;
+#endif
+//prize add by lipengpeng 20210202 start 
+
 
 #if (CONFIG_MTK_GAUGE_VERSION != 30)
 signed int battery_get_bat_voltage(void)
@@ -87,7 +95,18 @@ _CODE_DEFINEDE
 
 signed int battery_get_bat_voltage(void)
 {
+//prize add by lipengpeng 20210202 start 
+	#if defined(CONFIG_MTK_CW2015_SUPPORT)
+	if(cw2015_exit_flag==1)
+		return g_cw2015_vol;
+	else
+		return pmic_get_battery_voltage();
+	#else
+//prize add by lipengpeng 20210202 end 
 	return pmic_get_battery_voltage();
+//prize add by lipengpeng 20210202 start 
+	#endif
+//prize add by lipengpeng 20210202 end 
 }
 
 signed int battery_get_bat_current(void)
@@ -108,11 +127,24 @@ signed int battery_get_bat_current_mA(void)
 
 signed int battery_get_soc(void)
 {
+//prize add by lipengpeng 20210202 start 
+#if defined(CONFIG_MTK_CW2015_SUPPORT)
+	if(cw2015_exit_flag==1)
+		return g_cw2015_capacity;
+	else
+		return get_mtk_battery()->soc;
+#else
+//prize add by lipengpeng 20210202 end 
 	return get_mtk_battery()->soc;
+//prize add by lipengpeng 20210202 start 
+#endif
+//prize add by lipengpeng 20210202 end 
 }
 
 signed int battery_get_uisoc(void)
 {
+	//prize wyq 20181108 return real uisoc in meta and factory mode for battery test before delivery   
+#if 0
 	int boot_mode = get_boot_mode();
 
 	if ((boot_mode == META_BOOT) ||
@@ -120,8 +152,19 @@ signed int battery_get_uisoc(void)
 		(boot_mode == FACTORY_BOOT) ||
 		(boot_mode == ATE_FACTORY_BOOT))
 		return 75;
-
+#endif
+//prize add by lipengpeng 20210202 start 
+#if defined(CONFIG_MTK_CW2015_SUPPORT)
+	if(cw2015_exit_flag==1)
+		return g_cw2015_capacity;
+	else
+		return get_mtk_battery()->ui_soc;
+#else
+//prize add by lipengpeng 20210202 end 
 	return get_mtk_battery()->ui_soc;
+//prize add by lipengpeng 20210202 start 
+#endif
+//prize add by lipengpeng 20210202 end 
 }
 
 signed int battery_get_bat_temperature(void)

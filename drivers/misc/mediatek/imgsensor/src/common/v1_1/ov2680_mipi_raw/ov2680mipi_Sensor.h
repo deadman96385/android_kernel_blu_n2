@@ -109,6 +109,11 @@ struct imgsensor_info_struct {
 	kal_uint8 custom3_delay_frame;
 	kal_uint8 custom4_delay_frame;
 	kal_uint8 custom5_delay_frame;
+	kal_uint32 min_gain;
+	kal_uint32 max_gain;
+	kal_uint32 min_gain_iso;
+	kal_uint32 gain_step;
+	kal_uint8  gain_type;
 	kal_uint8 margin;
 	kal_uint32 min_shutter;	/* min shutter */
 	kal_uint32 max_frame_length;

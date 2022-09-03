@@ -189,6 +189,10 @@ struct charger_custom_data {
 	int jeita_temp_t1_to_t2_cv;
 	int jeita_temp_t0_to_t1_cv;
 	int jeita_temp_below_t0_cv;
+	int jeita_temp_t3_to_t4_current;
+	int jeita_temp_t2_to_t3_current;
+	int jeita_temp_t1_to_t2_current;
+	int jeita_temp_t0_to_t1_current;
 	int temp_t4_thres;
 	int temp_t4_thres_minus_x_degree;
 	int temp_t3_thres;

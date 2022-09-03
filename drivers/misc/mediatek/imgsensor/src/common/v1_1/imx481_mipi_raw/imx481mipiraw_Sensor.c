@@ -315,10 +315,45 @@ static void set_dummy(void)
 	write_cmos_sensor(0x0104, 0x00);
 } /* set_dummy */
 
+
+static kal_uint32 return_mod_id_from_otp(void)
+{
+	kal_uint16 val = 0;
+	int i = 0;
+	kal_uint16 mid_val = 0;
+	
+	if (write_cmos_sensor(0x0a02, 0x07) < 0) {
+		pr_debug("read otp fail Err!\n");
+		return 0;
+	}
+	write_cmos_sensor(0x0a00, 0x01);
+	
+	for (i = 0; i < 3; i++) {
+		val = read_cmos_sensor(0x0A01);
+		if ((val & 0x01) == 0x01)
+			break;
+		mDELAY(3);
+	}
+	if (i == 3) {
+		pr_debug("read otp fail Err!\n");
+		return 0;
+	}
+	
+	mid_val = read_cmos_sensor(0x0A3D);
+	printk("IMX481 read otp MID 0x%x\n",mid_val);
+
+	/* Check with Mud'mail */
+	return  mid_val;
+}
+
 static kal_uint32 return_lot_id_from_otp(void)
 {
 	kal_uint16 val = 0;
 	int i = 0;
+	kal_uint16 mid_val = 0;
+	kal_uint16 sensor_id = 0;
+	
+	mid_val = return_mod_id_from_otp();
 
 	if (write_cmos_sensor(0x0a02, 0x1B) < 0) {
 		pr_debug("read otp fail Err!\n");
@@ -336,8 +371,14 @@ static kal_uint32 return_lot_id_from_otp(void)
 		pr_debug("read otp fail Err!\n");
 		return 0;
 	}
+
+	sensor_id =  ((read_cmos_sensor(0x0A22) << 4) | read_cmos_sensor(0x0A23) >> 4);
+	if(mid_val == 0x1A)
+	{
+		sensor_id +=1;
+	}
 	/* Check with Mud'mail */
-	return((read_cmos_sensor(0x0A22) << 4) | read_cmos_sensor(0x0A23) >> 4);
+	return sensor_id;
 }
 
 static void set_max_framerate(UINT16 framerate, kal_bool min_framelength_en)

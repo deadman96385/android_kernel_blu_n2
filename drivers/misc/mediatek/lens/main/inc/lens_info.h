@@ -71,6 +71,9 @@
 #define AFDRV_OV8825AF "OV8825AF"
 #define AFDRV_WV511AAF "WV511AAF"
 #define AFDRV_DW9718TAF "DW9718TAF"
+//prize add by yantaotao for camera af start
+#define AFDRV_FP5516WEAF "FP5516WEAF"
+//prize add by yantaotao for camera af end
 
 #define CONVERT_CCU_TIMESTAMP 0x1000
 

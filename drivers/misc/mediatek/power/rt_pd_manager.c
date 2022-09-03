@@ -40,6 +40,13 @@
 
 #define RT_PD_MANAGER_VERSION	"1.0.5_MTK"
 
+//liqiang add for hx adapter start 
+#if  defined(CONFIG_PRIZE_SUPPORT_HX_ADAPTER)
+bool is_hx_adapter = 0;
+bool is_usb_plug_in = 0;
+#endif
+//liqiang add for hx adapter end
+
 static DEFINE_MUTEX(param_lock);
 
 static struct tcpc_device *tcpc_dev;
@@ -48,6 +55,7 @@ static int pd_sink_voltage_new;
 static int pd_sink_voltage_old;
 static int pd_sink_current_new;
 static int pd_sink_current_old;
+
 static bool tcpc_kpoc;
 #if 0 /* vconn is from vsys on mt6763 */
 /* vconn boost gpio pin */
@@ -161,7 +169,6 @@ static int pd_tcp_notifier_call(struct notifier_block *nb,
 					unsigned long event, void *data)
 {
 	struct tcp_notify *noti = data;
-
 	switch (event) {
 	case TCP_NOTIFY_SOURCE_VCONN:
 #if 0 /* vconn is from vsys on mt6763 */
@@ -187,7 +194,20 @@ static int pd_tcp_notifier_call(struct notifier_block *nb,
 		pr_info("%s sink vbus %dmV %dmA type(0x%02X)\n", __func__,
 			pd_sink_voltage_new, pd_sink_current_new,
 			noti->vbus_state.type);
-
+//liqiang add for hx adapter start 
+#if defined(CONFIG_PRIZE_SUPPORT_HX_ADAPTER)
+	
+	if(is_usb_plug_in == 1){
+	    if((pd_sink_voltage_old != 0 && pd_sink_current_old != 0) && (pd_sink_voltage_new == 0 && pd_sink_current_new == 0))
+	    {
+		is_hx_adapter = 1;
+		pr_info("guess is_hx_adapter = %s\n",is_hx_adapter?"true":"false");
+	    }
+	}else{
+	    is_hx_adapter = 0;
+	}
+#endif
+//liqiang add for hx adapter end
 		if ((pd_sink_voltage_new != pd_sink_voltage_old) ||
 		    (pd_sink_current_new != pd_sink_current_old)) {
 			pd_sink_voltage_old = pd_sink_voltage_new;

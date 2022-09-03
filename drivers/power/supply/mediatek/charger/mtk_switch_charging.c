@@ -66,6 +66,23 @@
 #include "mtk_charger_intf.h"
 #include "mtk_switch_charging.h"
 
+//start add by sunshuai for Bright screen current limit  20181130
+#if defined(CONFIG_PRIZE_CHARGE_CTRL_POLICY)
+extern int g_charge_is_screen_on;
+#endif
+//end add by sunshuai for Bright screen current limit   20181130
+
+//prize added by sunshuai, wireless charge MT5725   15W soft start, 20200428-start
+#if defined(CONFIG_PRIZE_MT5725_SUPPORT_15W)
+static struct charger_manager *mt5725_info;
+extern int reset_mt5725_info(void);
+extern int get_MT5725_status(void);
+extern int get_wireless_charge_current(struct charger_data *pdata);
+static int MT5725_init(struct charger_manager *info);
+extern void En_Dis_add_current(int i);
+#endif
+//prize added by sunshuai, wireless charge MT5725   15W soft start, 20200428-end
+
 static int _uA_to_mA(int uA)
 {
 	if (uA == -1)
@@ -244,6 +261,16 @@ static void swchg_select_charging_current_limit(struct charger_manager *info)
 				info->data.non_std_ac_charger_current;
 		pdata->charging_current_limit =
 				info->data.non_std_ac_charger_current;
+
+//prize added by sunshuai, wireless charge MT5725   15W soft start, 20200428-start
+#if defined(CONFIG_PRIZE_MT5725_SUPPORT_15W)
+		if((info->chr_type == NONSTANDARD_CHARGER) && (get_MT5725_status() == 0)){
+			get_wireless_charge_current(pdata);
+			chr_err("wireless charge current input_current_limit %d: charging_current_limit %d\n",pdata->input_current_limit,pdata->charging_current_limit);
+		}
+#endif
+//prize added by sunshuai, wireless charge MT5725   15W soft start, 20200428-end
+
 	} else if (info->chr_type == STANDARD_CHARGER) {
 		pdata->input_current_limit =
 				info->data.ac_charger_input_current;
@@ -277,12 +304,41 @@ static void swchg_select_charging_current_limit(struct charger_manager *info)
 		    && info->chr_type == STANDARD_HOST)
 			pr_debug("USBIF & STAND_HOST skip current check\n");
 		else {
-			if (info->sw_jeita.sm == TEMP_T0_TO_T1) {
-				pdata->input_current_limit = 500000;
-				pdata->charging_current_limit = 350000;
+			if (info->sw_jeita.sm == TEMP_T0_TO_T1 && info->data.jeita_temp_t0_to_t1_current != 0) {
+			    if(pdata->charging_current_limit > info->data.jeita_temp_t0_to_t1_current)
+				pdata->charging_current_limit = info->data.jeita_temp_t0_to_t1_current;
+			}else if(info->sw_jeita.sm == TEMP_T1_TO_T2 && info->data.jeita_temp_t1_to_t2_current != 0){
+			    if(pdata->charging_current_limit > info->data.jeita_temp_t1_to_t2_current)
+				pdata->charging_current_limit = info->data.jeita_temp_t1_to_t2_current;
+			}else if(info->sw_jeita.sm == TEMP_T2_TO_T3 && info->data.jeita_temp_t2_to_t3_current != 0){
+			    if(pdata->charging_current_limit > info->data.jeita_temp_t2_to_t3_current)
+				pdata->charging_current_limit = info->data.jeita_temp_t2_to_t3_current;
+			}else if(info->sw_jeita.sm == TEMP_T3_TO_T4 && info->data.jeita_temp_t3_to_t4_current != 0){
+			    if(pdata->charging_current_limit > info->data.jeita_temp_t3_to_t4_current)
+				pdata->charging_current_limit = info->data.jeita_temp_t3_to_t4_current;
 			}
 		}
 	}
+//prize add by sunshuai for Bright screen current limit  20181130 start
+#if defined(CONFIG_PRIZE_CHARGE_CTRL_POLICY)
+	if (g_charge_is_screen_on){
+		if (pdata->charging_current_limit > 1500000){
+			pdata->charging_current_limit = 1500000;
+		}
+		if (pdata->input_current_limit > 1000000){
+			pdata->input_current_limit = 1000000;
+		}
+//prize add by sunshuai for Bright screen current limit  for master charge	2019-0429 start
+		if ((mtk_pe20_get_is_enable(info) && mtk_pe20_get_is_connect(info))
+			|| (mtk_pe_get_is_enable(info) && mtk_pe_get_is_connect(info))){
+			pdata->input_current_limit = 500000;
+			pdata->charging_current_limit = 1000000;
+		}
+	}
+	printk("PRIZE master  charge current %d:%d\n",pdata->input_current_limit,pdata->charging_current_limit);
+//prize add by sunshuai for Bright screen current limit  for master charge  2019-0429 end
+#endif
+//prize add by sunshuai for Bright screen current limit	   20181130 end
 
 	if (pdata->thermal_charging_current_limit != -1) {
 		if (pdata->thermal_charging_current_limit <
@@ -429,6 +485,12 @@ static int mtk_switch_charging_plug_in(struct charger_manager *info)
 {
 	struct switch_charging_alg_data *swchgalg = info->algorithm_data;
 
+//prize added by sunshuai, wireless charge MT5725   15W soft start, 20200428-start
+#if defined(CONFIG_PRIZE_MT5725_SUPPORT_15W)
+    if((info->chr_type == NONSTANDARD_CHARGER) && (get_MT5725_status() == 0))
+		En_Dis_add_current(0x00);
+#endif
+//prize added by sunshuai, wireless charge MT5725   15W soft start, 20200428-end
 	swchgalg->state = CHR_CC;
 	info->polling_interval = CHARGING_INTERVAL;
 	swchgalg->disable_charging = false;
@@ -440,6 +502,12 @@ static int mtk_switch_charging_plug_in(struct charger_manager *info)
 static int mtk_switch_charging_plug_out(struct charger_manager *info)
 {
 	struct switch_charging_alg_data *swchgalg = info->algorithm_data;
+
+//prize added by sunshuai, wireless charge MT5725   15W soft start, 20200428-start
+#if defined(CONFIG_PRIZE_MT5725_SUPPORT_15W)
+	   reset_mt5725_info();
+#endif
+//prize added by sunshuai, wireless charge MT5725   15W soft start, 20200428-end
 
 	swchgalg->total_charging_time = 0;
 
@@ -673,14 +741,33 @@ static int mtk_switch_charging_current(struct charger_manager *info)
 	return 0;
 }
 
+//prize added by sunshuai, wireless charge MT5725   15W soft start, 20200428-start
+#if defined(CONFIG_PRIZE_MT5725_SUPPORT_15W)&&!defined(CONFIG_MTK_DUAL_CHARGER_SUPPORT)
+int wireless_charge_chage_current(void)
+{
+//prize add by lipengpeng 20210616 start 
+	if(mt5725_info==NULL){
+	printk("lpp----mt5725_info is null\n");
+	}else{
+//prize add by lipengpeng 20210616 end 
+	 swchg_select_charging_current_limit(mt5725_info);
+//prize add by lipengpeng 20210616 start 
+	}
+//prize add by lipengpeng 20210616 end 
+	return 0;
+}
+EXPORT_SYMBOL(wireless_charge_chage_current);
+#endif
+//prize added by sunshuai, wireless charge MT5725   15W soft start, 20200428-end
 static int mtk_switch_charging_run(struct charger_manager *info)
 {
 	struct switch_charging_alg_data *swchgalg = info->algorithm_data;
 	int ret = 0;
 
-	chr_err("%s [%d %d], timer=%d\n", __func__, swchgalg->state,
+	chr_err("%s [%d %d], timer=%d, g_charge_is_screen_on = %d\n", __func__, swchgalg->state,
 		info->pd_type,
-		swchgalg->total_charging_time);
+		swchgalg->total_charging_time,
+		g_charge_is_screen_on);
 
 	if (mtk_pdc_check_charger(info) == false &&
 	    mtk_is_TA_support_pd_pps(info) == false &&
@@ -694,6 +781,20 @@ static int mtk_switch_charging_run(struct charger_manager *info)
 		if (mtk_pe50_is_ready(info))
 			mtk_pe40_end(info, 4, true);
 	}
+
+#if defined(CONFIG_PRIZE_CHARGE_CTRL_POLICY)
+//prize added by sunshuai, 20210226-start
+	if (g_charge_is_screen_on) {
+		if (mtk_pe50_get_is_enable(info))
+			if (mtk_pe50_get_is_connect(info)) {
+				mtk_pe50_stop_algo(info, false);
+				mtk_pe50_notifier_call(info, MTK_PE50_NOTISRC_TCP,MTK_PD_CONNECT_HARD_RESET, NULL);
+					goto out;
+			}
+	} else
+		mtk_pe50_set_is_enable(info, true);
+//prize added by sunshuai, 20210226-end
+#endif
 
 	do {
 		switch (swchgalg->state) {
@@ -728,6 +829,12 @@ static int mtk_switch_charging_run(struct charger_manager *info)
 			break;
 		}
 	} while (ret != 0);
+
+#if defined(CONFIG_PRIZE_CHARGE_CTRL_POLICY)
+//prize added by sunshuai, 20210226-start
+out:
+//prize added by sunshuai, 20210226-end
+#endif
 	mtk_switch_check_charging_time(info);
 
 	charger_dev_dump_registers(info->chg1_dev);
@@ -833,6 +940,11 @@ int mtk_switch_charging_init(struct charger_manager *info)
 
 	mutex_init(&swch_alg->ichg_aicr_access_mutex);
 
+//prize added by sunshuai, wireless charge MT5725   15W soft start, 20200428-start
+#if defined(CONFIG_PRIZE_MT5725_SUPPORT_15W)
+    MT5725_init(info);
+#endif
+//prize added by sunshuai, wireless charge MT5725   15W soft start, 20200428-end
 	info->algorithm_data = swch_alg;
 	info->do_algorithm = mtk_switch_charging_run;
 	info->plug_in = mtk_switch_charging_plug_in;
@@ -843,3 +955,11 @@ int mtk_switch_charging_init(struct charger_manager *info)
 
 	return ret;
 }
+//prize added by sunshuai, wireless charge MT5725   15W soft start, 20200428-start
+#if defined(CONFIG_PRIZE_MT5725_SUPPORT_15W)
+static int MT5725_init(struct charger_manager *info){
+    mt5725_info = info;
+	return 0;
+}
+#endif
+//prize added by sunshuai, wireless charge MT5725   15W soft start, 20200428-end

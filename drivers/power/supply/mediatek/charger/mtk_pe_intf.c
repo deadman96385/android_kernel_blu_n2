@@ -20,7 +20,9 @@
 #include <upmu_common.h>
 #include "mtk_charger_intf.h"
 #include "mtk_charger_init.h"
-
+#if defined(CONFIG_PRIZE_SUPPORT_HX_ADAPTER)
+extern bool is_hx_adapter;
+#endif
 /* Unit of the following functions are uV, uA */
 static inline u32 pe_get_vbus(void)
 {
@@ -413,7 +415,16 @@ int mtk_pe_check_charger(struct charger_manager *pinfo)
 	 * SOC is not in range
 	 */
 	if (!pe->to_check_chr_type ||
-	    mt_get_charger_type() != STANDARD_CHARGER ||
+	//prize added by sunshuai, non std charge  soft start, 20200428-start
+#if defined(CONFIG_PRIZE_NONSTANDARD_CHARGER)
+	   ( (mt_get_charger_type() != STANDARD_CHARGER)&&(mt_get_charger_type() != NONSTANDARD_CHARGER) )||
+#else
+		mt_get_charger_type() != STANDARD_CHARGER ||
+#endif
+	//prize added by huangjiwu,non std charge  soft start, 20200428-start
+#if defined(CONFIG_PRIZE_SUPPORT_HX_ADAPTER)
+		is_hx_adapter == 1 ||
+#endif
 	    pinfo->data.ta_start_battery_soc > battery_get_soc() ||
 	    pinfo->data.ta_stop_battery_soc <= battery_get_soc())
 		goto _err;

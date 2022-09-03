@@ -46,6 +46,21 @@ struct stCAM_CAL_LIST_STRUCT g_camCalList[] = {
 	{IMX499_SENSOR_ID, 0xA0, Common_read_region},
 	{IMX481_SENSOR_ID, 0xA4, Common_read_region, DEFAULT_MAX_EEPROM_SIZE_8K,
 		BL24SA64_write_region},
+//prize add by lipengpeng 20210617 start 
+	{S5KGM2SP_SENSOR_ID, 0xB0, Common_read_region},
+//prize add by lipengpeng 20210617 end 
+//prize add by lipengpeng 20210617 start 
+	{S5KGM2SPTWO_SENSOR_ID, 0xB0, Common_read_region},
+	{S5KGM2SPGMS_SENSOR_ID, 0xB0, Common_read_region},
+//prize add by lipengpeng 20210617 end 
+//prize add by zhuzhengjiang for otp 20210623 start 
+	{S5KGM1ST_SENSOR_ID, 0xB0, Common_read_region},
+	{OV16A1Q_SENSOR_ID, 0xA0, Common_read_region},
+	{OV64B40_SENSOR_ID, 0xA4, Common_read_region},
+	{OV64B404CELL_SENSOR_ID, 0xA4, Common_read_region}, 	
+//prize add by zhuzhengjiang for otp 20210623 end 	
+    {OV48B2Q_SENSOR_ID, 0xA0, Common_read_region},
+	{S5KGM1SP_SENSOR_ID, 0xA0, Common_read_region},
 	/*  ADD before this line */
 	{0, 0, 0}       /*end of list */
 };

@@ -46,3 +46,25 @@ obj-$(CONFIG_CHARGER_HL7005) += hl7005.o
 obj-$(CONFIG_CHARGER_BQ25601) += bq25601.o
 obj-$(CONFIG_LOAD_SWITCH_RT9750) += rt9750.o
 obj-$(CONFIG_CHARGER_MT6362) += mt6362-chg.o
+
+# begin, prize-sunshuai-20200111, add for wireless power receiver mt5715
+obj-$(CONFIG_PRIZE_WIRELESS_RECEIVER_MAXIC_MT5715) += MT5715_wireless_driver.o
+# end, prize-sunshuai-20200111, add for wireless power receiver mt5715
+
+#//prize added by huarui, eta6937 support, 20190111-start
+obj-$(CONFIG_HL7005ALL_CHARGER_SUPPORT) += hl7005all.o
+#//prize added by huarui, eta6937 support, 20190111-end
+
+#//prize added by sunshuai, charge support, 20200507-start
+obj-$(CONFIG_PRIZE_MT5725_SUPPORT_15W) += mt5725_wireless_driver-15w.o
+#//prize added by sunshuai, charge support, 20200507-end
+
+#//prize added by sunshuai, cvs8035 support, 20200701-start
+obj-$(CONFIG_PRIZE_CV8035D_SUPPORT) += cvs8035/
+#//prize added by sunshuai, cvs8035 support, 20200701-end
+
+#add by liaojie 20210305  for sc8551 30w start
+obj-$(CONFIG_CHARGER_SC8551) += sc8551.o
+#add by liaojie 20210305  for sc8551 30w end
+
+obj-$(CONFIG_PRIZE_CHARGE_CTRL_HX) += prize_charge_limit.o

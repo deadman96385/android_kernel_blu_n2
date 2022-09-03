@@ -132,18 +132,25 @@ void mtk_vcodec_dec_pw_off(struct mtk_vcodec_pm *pm, int hw_id)
 
 void mtk_vcodec_dec_clock_on(struct mtk_vcodec_pm *pm, int hw_id)
 {
-
 #ifdef CONFIG_MTK_PSEUDO_M4U
 	int i, larb_port_num, larb_id;
 	struct M4U_PORT_STRUCT port;
 #endif
 #ifndef FPGA_PWRCLK_API_DISABLE
 	int ret;
+	struct mtk_vcodec_dev *dev;
+	unsigned long flags;
 
 	smi_bus_prepare_enable(SMI_LARB4, "VDEC");
 	ret = clk_prepare_enable(pm->clk_MT_CG_VDEC);
 	if (ret)
 		mtk_v4l2_err("clk_prepare_enable CG_VDEC fail %d", ret);
+	else {
+		dev = container_of(pm, struct mtk_vcodec_dev, pm);
+		spin_lock_irqsave(&dev->dec_power_lock[hw_id], flags);
+		dev->dec_is_power_on[hw_id] = true;
+		spin_unlock_irqrestore(&dev->dec_power_lock[hw_id], flags);
+	}
 
 	set_swpm_vdec_active(true);
 #endif
@@ -179,9 +186,15 @@ void mtk_vcodec_dec_clock_off(struct mtk_vcodec_pm *pm, int hw_id)
 {
 #ifndef FPGA_PWRCLK_API_DISABLE
 	struct mtk_vcodec_dev *dev;
+	unsigned long flags;
 
 	dev = container_of(pm, struct mtk_vcodec_dev, pm);
 	mtk_vdec_hw_break(dev, hw_id);
+
+	/* avoid translation fault callback dump reg not done */
+	spin_lock_irqsave(&dev->dec_power_lock[hw_id], flags);
+	dev->dec_is_power_on[hw_id] = false;
+	spin_unlock_irqrestore(&dev->dec_power_lock[hw_id], flags);
 
 	set_swpm_vdec_active(false);
 	clk_disable_unprepare(pm->clk_MT_CG_VDEC);
@@ -206,6 +219,13 @@ void mtk_vdec_hw_break(struct mtk_vcodec_dev *dev, int hw_id)
 	u32 fourcc = ctx->q_data[MTK_Q_DATA_SRC].fmt->fourcc;
 
 	if (hw_id == MTK_VDEC_CORE) {
+		value = readl(vdec_gcon_addr);
+		if ((value & 0xF0F) != 0x101) {
+			mtk_v4l2_debug(0, "VDEC not HW break since clk off gcon[0]=0x%lx. codec:0x%08x(%c%c%c%c)",
+			    value, fourcc, fourcc & 0xFF, (fourcc >> 8) & 0xFF,
+			    (fourcc >> 16) & 0xFF, (fourcc >> 24) & 0xFF);
+			return;
+		}
 		/* hw break */
 		writel((readl(vdec_misc_addr + 0x0100) | 0x1),
 			vdec_misc_addr + 0x0100);
@@ -267,13 +287,14 @@ void mtk_vdec_hw_break(struct mtk_vcodec_dev *dev, int hw_id)
 void mtk_vdec_dump_addr_reg(
 	struct mtk_vcodec_dev *dev, int hw_id, enum mtk_dec_dump_addr_type type)
 {
-	struct mtk_vcodec_ctx *ctx = dev->curr_dec_ctx[hw_id];
-	u32 fourcc = ctx->q_data[MTK_Q_DATA_SRC].fmt->fourcc;
+	struct mtk_vcodec_ctx *ctx;
+	u32 fourcc;
 	void __iomem *vld_addr = dev->dec_reg_base[VDEC_VLD];
 	void __iomem *mc_addr = dev->dec_reg_base[VDEC_MC];
 	void __iomem *mv_addr = dev->dec_reg_base[VDEC_MV];
 	unsigned long value, values[6];
 	int i, j, start, end;
+	unsigned long flags;
 
 	#define INPUT_VLD_NUM 7
 	const unsigned int input_vld_reg[INPUT_VLD_NUM] = {
@@ -286,6 +307,23 @@ void mtk_vdec_dump_addr_reg(
 	const unsigned int ref_mc_base[REF_MC_NUM] = {
 		0x3DC, 0xB60, 0x45C, 0xBE0, 0x4DC, 0xC60, 0xD28};
 	// P_L0_Y, P_L0_C, B_L0_Y, B_L0_C, B_L1_Y, B_L1_C, REF
+
+	if (hw_id != MTK_VDEC_CORE) {
+		mtk_v4l2_err("hw_id %d not support !!", hw_id);
+		return;
+	}
+	ctx = dev->curr_dec_ctx[hw_id];
+	if (ctx)
+		fourcc = ctx->q_data[MTK_Q_DATA_SRC].fmt->fourcc;
+	else
+		fourcc = 0;
+
+	spin_lock_irqsave(&dev->dec_power_lock[hw_id], flags);
+	if (dev->dec_is_power_on[hw_id] == false) {
+		mtk_v4l2_err("hw %d power is off !!", hw_id);
+		spin_unlock_irqrestore(&dev->dec_power_lock[hw_id], flags);
+		return;
+	}
 
 	switch (type) {
 	case DUMP_VDEC_IN_BUF:
@@ -386,6 +424,8 @@ void mtk_vdec_dump_addr_reg(
 	default:
 		mtk_v4l2_err("unknown addr type");
 	}
+
+	spin_unlock_irqrestore(&dev->dec_power_lock[hw_id], flags);
 }
 
 #ifdef CONFIG_MTK_IOMMU_V2
@@ -398,11 +438,16 @@ enum mtk_iommu_callback_ret_t mtk_vdec_translation_fault_callback(
 	u32 fourcc;
 
 	ctx = dev->curr_dec_ctx[hw_id];
-	fourcc = ctx->q_data[MTK_Q_DATA_SRC].fmt->fourcc;
-	mtk_v4l2_err("codec:0x%08x(%c%c%c%c) TF larb %d port %x mva 0x%lx",
-		fourcc, fourcc & 0xFF, (fourcc >> 8) & 0xFF,
-		(fourcc >> 16) & 0xFF, (fourcc >> 24) & 0xFF,
-		port >> 5, port, mva);
+	if (ctx) {
+		fourcc = ctx->q_data[MTK_Q_DATA_SRC].fmt->fourcc;
+		mtk_v4l2_err("codec:0x%08x(%c%c%c%c) TF larb %d port %x mva 0x%lx",
+			fourcc, fourcc & 0xFF, (fourcc >> 8) & 0xFF,
+			(fourcc >> 16) & 0xFF, (fourcc >> 24) & 0xFF,
+			port >> 5, port, mva);
+	} else {
+		mtk_v4l2_err("ctx NULL codec unknown, TF larb %d port %x mva 0x%lx",
+			port >> 5, port, mva);
+	}
 
 	switch (port) {
 	case M4U_PORT_L4_VDEC_VLD_EXT:

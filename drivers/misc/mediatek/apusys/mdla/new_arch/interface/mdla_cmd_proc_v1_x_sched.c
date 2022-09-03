@@ -59,13 +59,7 @@ static void mdla_cmd_prepare_v1_x_sched(struct mdla_run_cmd *cd,
 	apusys_hd->ip_time = 0;
 	ce->cmdbuf = apusys_hd->cmdbuf;
 	ce->priority = priority;
-
-	if (cd->offset_code_buf == 0)
-		/* for mdla UT */
-		ce->kva = (void *)apusys_mem_query_kva((u32)ce->mva);
-	else
-		ce->kva = (void *)(apusys_hd->cmd_entry + cd->offset_code_buf);
-
+	ce->kva = (void *)apusys_mem_query_kva((u32)ce->mva);
 
 	if (apusys_hd->multicore_total == 2) {
 		ce->cmd_id = apusys_hd->cmd_id;
@@ -178,6 +172,7 @@ int mdla_cmd_run_sync_v1_x_sched(struct mdla_run_cmd_sync *cmd_data,
 	struct mdla_run_cmd *cd = &cmd_data->req;
 	struct command_entry *ce;
 	struct mdla_scheduler *sched = mdla_info->sched;
+	uint64_t out_end;
 
 	u32 core_id = mdla_info->mdla_id;
 
@@ -220,14 +215,32 @@ int mdla_cmd_run_sync_v1_x_sched(struct mdla_run_cmd_sync *cmd_data,
 	/* prepare CE */
 	mdla_cmd_prepare_v1_x_sched(cd, apusys_hd, ce, priority);
 
+	out_end = apusys_hd->cmd_entry + apusys_hd->cmd_size;
+	if (mdla_cmd_plat_cb()->check_cmd_valid(out_end, ce) == false)
+		return -EINVAL;
+
 	ce->poweron_t = pwron_t;
 
 	mdla_cmd_set_opp(core_id, ce, pro_boost_val);
 
-	if (priority == MDLA_LOW_PRIORITY && ce->cmd_batch_size < ce->count)
-		mdla_sched_plat_cb()->split_alloc_cmd_batch(ce);
-	else
-		ce->batch_list_head = NULL;
+	ce->batch_list_head = NULL;
+	if (priority == MDLA_LOW_PRIORITY && ce->cmd_batch_size < ce->count) {
+		ce->cmd_int_backup = kcalloc(ce->count, sizeof(uint32_t), GFP_KERNEL);
+
+		if (ce->cmd_int_backup != NULL) {
+			ce->cmd_ctrl_1_backup = kcalloc(ce->count, sizeof(uint32_t), GFP_KERNEL);
+
+			if (ce->cmd_ctrl_1_backup != NULL) {
+				mdla_sched_plat_cb()->backup_cmd_batch(ce);
+				mdla_sched_plat_cb()->split_alloc_cmd_batch(ce);
+				if (ce->batch_list_head == NULL) {
+					kfree(ce->cmd_int_backup);
+					kfree(ce->cmd_ctrl_1_backup);
+				}
+			} else
+				kfree(ce->cmd_int_backup);
+		}
+	}
 
 	mdla_util_apu_pmu_handle(mdla_info, apusys_hd, (u16)priority);
 
@@ -278,6 +291,12 @@ error_handle:
 	mdla_trace_end(core_id, 0, ce);
 	mdla_prof_iter(core_id);
 	mdla_util_apu_pmu_update(mdla_info, apusys_hd, (u16)priority);
+
+	if (priority == MDLA_LOW_PRIORITY && ce->batch_list_head != NULL) {
+		mdla_sched_plat_cb()->restore_cmd_batch(ce);
+		kfree(ce->cmd_int_backup);
+		kfree(ce->cmd_ctrl_1_backup);
+	}
 
 	spin_lock_irqsave(&sched->lock, flags);
 

@@ -191,6 +191,38 @@ int seninf_clk_set(struct SENINF_CLK *pclk,
 
 		ret = clk_set_parent(
 			pclk->mclk_sel[idx_tg], pclk->mclk_sel[idx_freq]);
+		/*prize add by yantaotao for dcam_f mclk  start */
+	#ifdef CONFIG_PRIZE_DUAL_CAMERA_ENABLE 
+		if(pmclk->TG == 0) {
+			PK_PR_ERR(
+					"prize add 1 [CAMERA SENSOR] tg=%d idx_freq=%d\n",SENINF_CLK_IDX_TG_TOP_MUX_CAMTG,idx_freq);
+				
+			#ifdef TG1_ALWAYS_ON
+			/* Workaround for timestamp: TG1 always ON */
+			if (clk_prepare_enable(
+				pclk->mclk_sel[SENINF_CLK_IDX_TG_TOP_MUX_CAMTG]))
+				PK_PR_ERR("[CAMERA SENSOR] failed tg=%d\n",
+					  SENINF_CLK_IDX_TG_TOP_MUX_CAMTG);
+			else
+				atomic_inc(
+				&pclk->enable_cnt[SENINF_CLK_IDX_TG_TOP_MUX_CAMTG]);
+			#endif
+
+			if (clk_prepare_enable(pclk->mclk_sel[idx_tg+3]))
+				PK_PR_ERR("[CAMERA SENSOR] failed tg=%d\n", pmclk->TG);
+			else
+				atomic_inc(&pclk->enable_cnt[idx_tg+3]);
+
+			if (clk_prepare_enable(pclk->mclk_sel[idx_freq]))
+				PK_PR_ERR("[CAMERA SENSOR] failed freq idx= %d\n", i);
+			else
+				atomic_inc(&pclk->enable_cnt[idx_freq]);
+
+			ret = clk_set_parent(
+				pclk->mclk_sel[idx_tg+3], pclk->mclk_sel[idx_freq]);
+		}
+	#endif
+	/*prize add by yantaotao for dcam_f mclk  end */ 
 	} else {
 		if (atomic_read(&pclk->enable_cnt[idx_freq]) > 0) {
 			clk_disable_unprepare(pclk->mclk_sel[idx_freq]);
@@ -212,6 +244,31 @@ int seninf_clk_set(struct SENINF_CLK *pclk,
 			&pclk->enable_cnt[SENINF_CLK_IDX_TG_TOP_MUX_CAMTG]);
 		}
 #endif
+
+/*prize add by yantaotao for dcam_f mclk  start */
+	#ifdef CONFIG_PRIZE_DUAL_CAMERA_ENABLE 	
+		if (atomic_read(&pclk->enable_cnt[idx_freq]) > 0) {
+			clk_disable_unprepare(pclk->mclk_sel[idx_freq]);
+			atomic_dec(&pclk->enable_cnt[idx_freq]);
+		}
+
+		if (atomic_read(&pclk->enable_cnt[idx_tg+3]) > 0) {
+			clk_disable_unprepare(pclk->mclk_sel[idx_tg+3]);
+			atomic_dec(&pclk->enable_cnt[idx_tg+3]);
+		}
+		#ifdef TG1_ALWAYS_ON
+		/* Workaround for timestamp: TG1 always ON */
+		if (atomic_read(
+			&pclk->enable_cnt[SENINF_CLK_IDX_TG_TOP_MUX_CAMTG])
+			> 0) {
+			clk_disable_unprepare(
+			pclk->mclk_sel[SENINF_CLK_IDX_TG_TOP_MUX_CAMTG]);
+			atomic_dec(
+			&pclk->enable_cnt[SENINF_CLK_IDX_TG_TOP_MUX_CAMTG]);
+		}
+		#endif
+	#endif
+		/*prize add by yantaotao for dcam_f mclk  end */ 
 	}
 
 	return ret;

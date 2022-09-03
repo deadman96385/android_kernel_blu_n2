@@ -102,6 +102,12 @@ static void led_timer_function(unsigned long data)
 	mod_timer(&led_cdev->blink_timer, jiffies + msecs_to_jiffies(delay));
 }
 
+// prize baibo for hbm begin
+#define HBM_ON 260
+#define HBM_OFF 270
+int hbm_value = 0;
+// prize baibo for hbm end
+
 static void set_brightness_delayed(struct work_struct *ws)
 {
 	struct led_classdev *led_cdev =
@@ -112,6 +118,11 @@ static void set_brightness_delayed(struct work_struct *ws)
 		led_cdev->delayed_set_value = LED_OFF;
 		led_stop_software_blink(led_cdev);
 	}
+	printk("wolf %s\n", __func__);
+	// prize baibo for hbm begin
+	if (led_cdev->delayed_set_value == HBM_ON || led_cdev->delayed_set_value == HBM_OFF)
+		hbm_value = led_cdev->delayed_set_value;
+	// prize baibo for hbm end
 
 	ret = __led_set_brightness(led_cdev, led_cdev->delayed_set_value);
 	if (ret == -ENOTSUPP)
@@ -250,7 +261,7 @@ void led_set_brightness(struct led_classdev *led_cdev,
 		}
 		return;
 	}
-
+	printk("wolf %s  brightness = %d\n",__func__,brightness);
 	led_set_brightness_nosleep(led_cdev, brightness);
 }
 EXPORT_SYMBOL_GPL(led_set_brightness);
@@ -260,7 +271,10 @@ void led_set_brightness_nopm(struct led_classdev *led_cdev,
 {
 	/* Use brightness_set op if available, it is guaranteed not to sleep */
 	if (!__led_set_brightness(led_cdev, value))
+	{
+		printk("wolf set_brightness not support return\n");
 		return;
+	}
 
 	/* If brightness setting can sleep, delegate it to a work queue task */
 	led_cdev->delayed_set_value = value;
@@ -271,10 +285,14 @@ EXPORT_SYMBOL_GPL(led_set_brightness_nopm);
 void led_set_brightness_nosleep(struct led_classdev *led_cdev,
 				enum led_brightness value)
 {
-	led_cdev->brightness = min(value, led_cdev->max_brightness);
-
+	//prize add by wangfei for del max brightness limit 20210929
+	// 	led_cdev->brightness  = min(value, led_cdev->max_brightness);
+	led_cdev->brightness = value;
 	if (led_cdev->flags & LED_SUSPENDED)
+	{
+		printk("wolf led_cdev suspend return\n");
 		return;
+	}
 
 	led_set_brightness_nopm(led_cdev, led_cdev->brightness);
 }

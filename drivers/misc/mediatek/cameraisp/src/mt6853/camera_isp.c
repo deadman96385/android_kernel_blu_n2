@@ -756,7 +756,7 @@ enum RAW_IDX {
 	CAM_C,
 	CAM_MAX,
 };
-#define P1DONE_STR_LEN (112)
+#define P1DONE_STR_LEN (122)
 struct RAW_LOG {
 	char module;
 	char _str[P1DONE_STR_LEN];
@@ -2544,6 +2544,12 @@ static void ISP_EnableClock(bool En)
 		}
 #endif
 #else /*CCF*/
+		/* Reset CSR */
+		ISP_WR32(CAMSYS_RAWA_REG_SW_RST, 0x8);
+		ISP_WR32(CAMSYS_RAWA_REG_SW_RST, 0x0);
+		ISP_WR32(CAMSYS_RAWB_REG_SW_RST, 0x8);
+		ISP_WR32(CAMSYS_RAWB_REG_SW_RST, 0x0);
+
 		/*LOG_INF("CCF:prepare_enable clk"); */
 		spin_lock(&(IspInfo.SpinLockClock));
 		G_u4EnableClockCount++;
@@ -7850,16 +7856,48 @@ static int __init ISP_Init(void)
 
 	SV_SetPMQOS(E_CLK_ADD, ISP_IRQ_TYPE_INT_CAMSV_START_ST, NULL);
 
+	/* for IMGO debug usage */
+	mtk_iommu_register_fault_callback(M4U_PORT_L16_CAM_IMGO_R1_A,
+		isp_m4u_fault_callback,
+		NULL);
+	mtk_iommu_register_fault_callback(M4U_PORT_L17_CAM_IMGO_R1_B,
+		isp_m4u_fault_callback,
+		NULL);
+	/* for YUVO debug usage */
+	mtk_iommu_register_fault_callback(M4U_PORT_L16_CAM_YUVO_R1_A,
+		isp_m4u_fault_callback,
+		NULL);
+	mtk_iommu_register_fault_callback(M4U_PORT_L17_CAM_YUVO_R1_B,
+		isp_m4u_fault_callback,
+		NULL);
 	/* for CRZO debug usage */
 	mtk_iommu_register_fault_callback(M4U_PORT_L16_CAM_CRZO_R1_A,
-			isp_m4u_fault_callback,
-			NULL);
+		isp_m4u_fault_callback,
+		NULL);
 	mtk_iommu_register_fault_callback(M4U_PORT_L17_CAM_CRZO_R1_B,
-			isp_m4u_fault_callback,
-			NULL);
-	mtk_iommu_register_fault_callback(M4U_PORT_L18_CAM_CRZO_R1_C,
-			isp_m4u_fault_callback,
-			NULL);
+		isp_m4u_fault_callback,
+		NULL);
+	/* for AFO debug usage */
+	mtk_iommu_register_fault_callback(M4U_PORT_L16_CAM_AFO_R1_A,
+		isp_m4u_fault_callback,
+		NULL);
+	mtk_iommu_register_fault_callback(M4U_PORT_L17_CAM_AFO_R1_B,
+		isp_m4u_fault_callback,
+		NULL);
+	/* for FLKO debug usage */
+	mtk_iommu_register_fault_callback(M4U_PORT_L16_CAM_FLKO_R1_A,
+		isp_m4u_fault_callback,
+		NULL);
+	mtk_iommu_register_fault_callback(M4U_PORT_L17_CAM_FLKO_R1_B,
+		isp_m4u_fault_callback,
+		NULL);
+	/* for CQI debug usage */
+	mtk_iommu_register_fault_callback(M4U_PORT_L16_CAM_CQI_R1_A,
+		isp_m4u_fault_callback,
+		NULL);
+	mtk_iommu_register_fault_callback(M4U_PORT_L17_CAM_CQI_R1_B,
+		isp_m4u_fault_callback,
+		NULL);
 
 	LOG_DBG("- E. Ret: %d.", Ret);
 	return Ret;
@@ -10895,6 +10933,7 @@ irqreturn_t ISP_Irq_CAM(enum ISP_IRQ_TYPE_ENUM irq_module)
 {
 	unsigned int module = irq_module;
 	unsigned int reg_module = ISP_CAM_A_IDX;
+	unsigned int inner_reg_module = ISP_CAM_A_INNER_IDX;
 	unsigned int i, cardinalNum = 0, IrqStatus, ErrStatus, WarnStatus;
 	unsigned int DmaStatus, WarnStatus_2 = 0, cur_v_cnt = 0;
 	unsigned int cqDoneIndex = 0;
@@ -10932,14 +10971,17 @@ irqreturn_t ISP_Irq_CAM(enum ISP_IRQ_TYPE_ENUM irq_module)
 	switch (irq_module) {
 	case ISP_IRQ_TYPE_INT_CAM_A_ST:
 		reg_module = ISP_CAM_A_IDX;
+		inner_reg_module = ISP_CAM_A_INNER_IDX;
 		cardinalNum = 0;
 		break;
 	case ISP_IRQ_TYPE_INT_CAM_B_ST:
 		reg_module = ISP_CAM_B_IDX;
+		inner_reg_module = ISP_CAM_B_INNER_IDX;
 		cardinalNum = 1;
 		break;
 	case ISP_IRQ_TYPE_INT_CAM_C_ST:
 		reg_module = ISP_CAM_C_IDX;
+		inner_reg_module = ISP_CAM_C_INNER_IDX;
 		cardinalNum = 2;
 		break;
 	default:
@@ -11078,13 +11120,42 @@ irqreturn_t ISP_Irq_CAM(enum ISP_IRQ_TYPE_ENUM irq_module)
 			HwP1Done_cnt[module] -= 256;
 	}
 
-	if ((IrqStatus & HW_PASS1_DON_ST) &&
-	    (IspInfo.DebugMask & ISP_DBG_HW_DON)) {
 
-		IRQ_LOG_KEEPER(module, m_CurrentPPB, _LOG_INF,
-			       "CAM%c P1_HW_DON_%d\n", 'A' + cardinalNum,
-			       (sof_count[module]) ? (sof_count[module] - 1)
-						   : (sof_count[module]));
+	if (IrqStatus & HW_PASS1_DON_ST) {
+		unsigned int frmPeriod =
+			((ISP_RD32(CAM_REG_TG_SUB_PERIOD(reg_module)) >> 8) &
+			0x1F) + 1;
+		if ((sof_count[module] == HwP1Done_cnt[module]) && (frmPeriod > 1)) {
+			/* reduce SMVR case hw p1 done log */
+			IRQ_LOG_KEEPER(module, m_CurrentPPB, _LOG_INF,
+		"CAM%c P1_HW_DON_%d_%d dma done(0x%x,0x%x)int(0x%x,0x%x)FBC(0x%x,0x%x,0x%x,0x%x,0x%x_0x%x,0x%x)\n",
+		'A' + cardinalNum,
+		(sof_count[module]) ? (sof_count[module] - 1) :
+		(sof_count[module]),
+		HwP1Done_cnt[module],
+		(unsigned int)ISP_RD32(
+		CAM_REG_CTL_RAW_INT2_STATUSX(ISP_CAM_A_INNER_IDX)),
+		(unsigned int)ISP_RD32(
+		CAM_REG_CTL_RAW_INT2_STATUSX(ISP_CAM_B_INNER_IDX)),
+		(unsigned int)ISP_RD32(
+		CAM_REG_CTL_RAW_INT_STATUSX(ISP_CAM_A_INNER_IDX)),
+		(unsigned int)ISP_RD32(
+		CAM_REG_CTL_RAW_INT_STATUSX(ISP_CAM_B_INNER_IDX)),
+		(unsigned int)ISP_RD32(
+		CAM_REG_FBC_RRZO_CTL2(ISP_CAM_A_INNER_IDX)),
+		(unsigned int)ISP_RD32(
+		CAM_REG_FBC_LCESO_CTL2(ISP_CAM_A_INNER_IDX)),
+		(unsigned int)ISP_RD32(
+		CAM_REG_FBC_LCESHO_CTL2(ISP_CAM_A_INNER_IDX)),
+		(unsigned int)ISP_RD32(
+		CAM_REG_FBC_YUVO_CTL2(ISP_CAM_A_INNER_IDX)),
+		(unsigned int)ISP_RD32(
+		CAM_REG_FBC_YUVBO_CTL2(ISP_CAM_A_INNER_IDX)),
+		(unsigned int)ISP_RD32(
+		CAM_REG_FBC_YUVO_CTL2(ISP_CAM_B_INNER_IDX)),
+		(unsigned int)ISP_RD32(
+		CAM_REG_FBC_YUVBO_CTL2(ISP_CAM_B_INNER_IDX)));
+		}
 	}
 
 	spin_lock(&(IspInfo.SpinLockIrq[module]));
@@ -11117,25 +11188,32 @@ irqreturn_t ISP_Irq_CAM(enum ISP_IRQ_TYPE_ENUM irq_module)
 				gPass1doneLog[module].module = module;
 				snprintf(gPass1doneLog[module]._str,
 				P1DONE_STR_LEN,
-				"CAM_%c P1_DON_%d(0x%08x_0x%08x,0x%08x_0x%08x)dma done(0x%x,0x%x,0x%x)exe_us:%d",
-					'A' + cardinalNum,
-					(sof_count[module])
-						? (sof_count[module] - 1)
-						: (sof_count[module]),
-					(unsigned int)(fbc_ctrl1[0].Raw),
-					(unsigned int)(fbc_ctrl2[0].Raw),
-					(unsigned int)(fbc_ctrl1[1].Raw),
-					(unsigned int)(fbc_ctrl2[1].Raw),
-					(unsigned int)ISP_RD32(
-						CAM_REG_CTL_RAW_INT2_STATUSX(
-						ISP_CAM_A_IDX)),
-					(unsigned int)ISP_RD32(
-						CAM_REG_CTL_RAW_INT2_STATUSX(
-						ISP_CAM_B_IDX)),
-					(unsigned int)ISP_RD32(
-						CAM_REG_CTL_RAW_INT2_STATUSX(
-						ISP_CAM_C_IDX)),
-					(unsigned int)((sec * 1000000 + usec) -
+				"CAM_%c P1_DON_%d(0x%08x_0x%08x)dma done(0x%x,0x%x)FBC(0x%x,0x%x,0x%x,0x%x)exe_us:%d",
+				'A' + cardinalNum,
+				(sof_count[module])
+					? (sof_count[module] - 1)
+					: (sof_count[module]),
+				(unsigned int)(fbc_ctrl1[1].Raw),
+				(unsigned int)(fbc_ctrl2[1].Raw),
+				(unsigned int)ISP_RD32(
+					CAM_REG_CTL_RAW_INT2_STATUSX(
+					ISP_CAM_A_IDX)),
+				(unsigned int)ISP_RD32(
+					CAM_REG_CTL_RAW_INT2_STATUSX(
+					ISP_CAM_B_IDX)),
+				(unsigned int)ISP_RD32(
+					CAM_REG_FBC_LCESO_CTL2(
+					ISP_CAM_A_INNER_IDX)),
+				(unsigned int)ISP_RD32(
+					CAM_REG_FBC_LCESHO_CTL2(
+					ISP_CAM_A_INNER_IDX)),
+				(unsigned int)ISP_RD32(
+					CAM_REG_FBC_YUVO_CTL2(
+					ISP_CAM_A_INNER_IDX)),
+				(unsigned int)ISP_RD32(
+					CAM_REG_FBC_YUVBO_CTL2(
+					ISP_CAM_A_INNER_IDX)),
+				(unsigned int)((sec * 1000000 + usec) -
 					       (1000000 * sec_sof[module] +
 						usec_sof[module])));
 			}
@@ -11625,7 +11703,7 @@ irqreturn_t ISP_Irq_CAM(enum ISP_IRQ_TYPE_ENUM irq_module)
 			else
 				IRQ_LOG_KEEPER(
 				module, m_CurrentPPB, _LOG_INF,
-				"%s,%s,CAM_%c P1_SOF_%d_%d(0x%08x_0x%08x,0x%08x_0x%08x,0x%08x,0x%08x,0x%x),int_us:%d,cq:0x%08x_0x%08x_0x%08x,DMA(0x%x_0x%x,0x%x_0x%x,0x%x_0x%x,0x%x_0x%x),FLKO(0x%x_0x%x,0x%x_0x%x)\n",
+				"%s,%s,CAM_%c P1_SOF_%d_%d(0x%08x_0x%08x,0x%08x_0x%08x,0x%08x,0x%08x,0x%x),int_us:%d,cq:0x%08x_0x%08x_0x%08x,DMA(0x%x_0x%x,0x%x_0x%x,0x%x_0x%x,0x%x_0x%x),FBC(0x%x,0x%x,0x%x,0x%x_0x%x,0x%x)\n",
 				gPass1doneLog[module]._str,
 				gLostPass1doneLog[module]._str,
 				'A' + cardinalNum, sof_count[module], cur_v_cnt,
@@ -11651,15 +11729,21 @@ irqreturn_t ISP_Irq_CAM(enum ISP_IRQ_TYPE_ENUM irq_module)
 					CAM_REG_CQ_THR0_BASEADDR(
 						ISP_CAM_C_IDX)),
 				(unsigned int)ISP_RD32(
+					CAM_REG_CTL_DMA_EN(ISP_CAM_A_IDX)),
+				(unsigned int)ISP_RD32(
+					CAM_REG_CTL_DMA_EN(
+						ISP_CAM_A_INNER_IDX)),
+				(unsigned int)ISP_RD32(
 					CAM_REG_CTL_DMA_EN(ISP_CAM_B_IDX)),
 				(unsigned int)ISP_RD32(
 					CAM_REG_CTL_DMA_EN(
 						ISP_CAM_B_INNER_IDX)),
 				(unsigned int)ISP_RD32(
-					CAM_REG_CTL_DMA_EN(ISP_CAM_C_IDX)),
+					CAM_REG_DMA_FRAME_HEADER_EN1(
+						ISP_CAM_A_IDX)),
 				(unsigned int)ISP_RD32(
-					CAM_REG_CTL_DMA_EN(
-						ISP_CAM_C_INNER_IDX)),
+					CAM_REG_DMA_FRAME_HEADER_EN1(
+						ISP_CAM_A_INNER_IDX)),
 				(unsigned int)ISP_RD32(
 					CAM_REG_DMA_FRAME_HEADER_EN1(
 						ISP_CAM_B_IDX)),
@@ -11667,21 +11751,23 @@ irqreturn_t ISP_Irq_CAM(enum ISP_IRQ_TYPE_ENUM irq_module)
 					CAM_REG_DMA_FRAME_HEADER_EN1(
 						ISP_CAM_B_INNER_IDX)),
 				(unsigned int)ISP_RD32(
-					CAM_REG_DMA_FRAME_HEADER_EN1(
-						ISP_CAM_C_IDX)),
+					CAM_REG_FBC_LCESO_CTL2(
+					ISP_CAM_A_INNER_IDX)),
 				(unsigned int)ISP_RD32(
-					CAM_REG_DMA_FRAME_HEADER_EN1(
-						ISP_CAM_C_INNER_IDX)),
+					CAM_REG_FBC_LCESHO_CTL2(
+					ISP_CAM_A_INNER_IDX)),
 				(unsigned int)ISP_RD32(
-					CAM_REG_FLKO_BASE_ADDR(ISP_CAM_A_IDX)),
+					CAM_REG_FBC_YUVO_CTL2(
+					ISP_CAM_A_INNER_IDX)),
 				(unsigned int)ISP_RD32(
-					CAM_REG_FLKO_BASE_ADDR(
-						ISP_CAM_A_INNER_IDX)),
+					CAM_REG_FBC_YUVBO_CTL2(
+					ISP_CAM_A_INNER_IDX)),
 				(unsigned int)ISP_RD32(
-					CAM_REG_FLKO_BASE_ADDR(ISP_CAM_B_IDX)),
+					CAM_REG_FBC_YUVO_CTL2(
+					ISP_CAM_B_INNER_IDX)),
 				(unsigned int)ISP_RD32(
-					CAM_REG_FLKO_BASE_ADDR(
-						ISP_CAM_B_INNER_IDX)));
+					CAM_REG_FBC_YUVBO_CTL2(
+					ISP_CAM_B_INNER_IDX)));
 		snprintf(gPass1doneLog[module]._str, P1DONE_STR_LEN, "\\");
 		snprintf(gLostPass1doneLog[module]._str, P1DONE_STR_LEN, "\\");
 

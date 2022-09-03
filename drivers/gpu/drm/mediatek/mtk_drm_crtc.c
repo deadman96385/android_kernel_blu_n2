@@ -56,6 +56,10 @@
 #include "cmdq-sec-iwc-common.h"
 #include "mtk_disp_ccorr.h"
 
+#ifdef CONFIG_MTK_MT6382_BDG
+#include "mtk_disp_bdg.h"
+#endif
+
 /* *****Panel_Master*********** */
 #include "mtk_fbconfig_kdebug.h"
 #include "mtk_layering_rule_base.h"
@@ -910,20 +914,20 @@ int mtk_drm_aod_setbacklight(struct drm_crtc *crtc, unsigned int level)
 	return 0;
 }
 
-static int mtk_drm_crtc_set_panel_hbm(struct drm_crtc *crtc, bool en)
+int mtk_drm_crtc_set_panel_hbm(struct drm_crtc *crtc, bool en)
 {
 	struct mtk_drm_crtc *mtk_crtc = to_mtk_crtc(crtc);
 	struct mtk_ddp_comp *comp = mtk_ddp_comp_request_output(mtk_crtc);
 	struct cmdq_pkt *cmdq_handle;
 	bool is_frame_mode;
-	bool state = false;
+//	bool state = false;
 
 	if (!(comp && comp->funcs && comp->funcs->io_cmd))
 		return -EINVAL;
 
-	comp->funcs->io_cmd(comp, NULL, DSI_HBM_GET_STATE, &state);
-	if (state == en)
-		return 0;
+//	comp->funcs->io_cmd(comp, NULL, DSI_HBM_GET_STATE, &state);
+	//if (state == en)
+	//	return 0;
 
 	if (!(mtk_crtc->enabled)) {
 		DDPINFO("%s: skip, slept\n", __func__);
@@ -933,7 +937,7 @@ static int mtk_drm_crtc_set_panel_hbm(struct drm_crtc *crtc, bool en)
 	mtk_drm_idlemgr_kick(__func__, crtc, 0);
 
 	DDPINFO("%s:set LCM hbm en:%d\n", __func__, en);
-
+	printk("%s:set LCM hbm en:%d\n", __func__, en);
 	is_frame_mode = mtk_crtc_is_frame_trigger_mode(&mtk_crtc->base);
 	cmdq_handle =
 		cmdq_pkt_create(mtk_crtc->gce_obj.client[CLIENT_DSI_CFG]);
@@ -1777,7 +1781,7 @@ unsigned int mtk_crtc_get_idle_interval(struct drm_crtc *crtc, unsigned int fps)
 
 	unsigned int idle_interval = mtk_drm_get_idle_check_interval(crtc);
 	/*calculate the timeout to enter idle in ms*/
-	if (idle_interval > 50)
+	if (idle_interval > 51)
 		return 0;
 	idle_interval = (3 * 1000) / fps + 1;
 
@@ -1802,12 +1806,14 @@ static void mtk_crtc_disp_mode_switch_begin(struct drm_crtc *crtc,
 	unsigned int _idle_timeout = 50;/*ms*/
 	int en = 1;
 	struct mtk_ddp_comp *output_comp;
+	unsigned int crtc_id = drm_crtc_index(crtc);
 
 	/* Check if disp_mode_idx change */
 	if (old_mtk_state->prop_val[CRTC_PROP_DISP_MODE_IDX] ==
 		mtk_state->prop_val[CRTC_PROP_DISP_MODE_IDX])
 		return;
 
+	CRTC_MMP_EVENT_START(crtc_id, mode_switch, 0, 0);
 	DDPMSG("%s from %u to %u\n", __func__,
 		old_mtk_state->prop_val[CRTC_PROP_DISP_MODE_IDX],
 		mtk_state->prop_val[CRTC_PROP_DISP_MODE_IDX]);
@@ -1870,6 +1876,7 @@ static void mtk_crtc_disp_mode_switch_begin(struct drm_crtc *crtc,
 		mtk_drm_set_idle_check_interval(crtc, _idle_timeout);
 
 	mtk_drm_idlemgr_kick(__func__, crtc, 0);
+	CRTC_MMP_EVENT_END(crtc_id, mode_switch, 0, 0);
 }
 
 bool already_free;
@@ -1944,7 +1951,7 @@ static void mtk_crtc_update_ddp_state(struct drm_crtc *crtc,
 				/*free fb buf in second query valid*/
 				DDPMSG("%s, %d release frame buffer\n", __func__, __LINE__);
 				mtk_drm_fb_gem_release(dev);
-				free_fb_buf();
+				try_free_fb_buf(dev);
 				already_free = true;
 			}
 #endif
@@ -2955,9 +2962,9 @@ void mtk_crtc_start_trig_loop(struct drm_crtc *crtc)
 
 		/*Trigger*/
 		mtk_disp_mutex_enable_cmdq(mtk_crtc->mutex[0], cmdq_handle,
-					   mtk_crtc->gce_obj.base);
+			mtk_crtc->gce_obj.base);
 		mtk_crtc_comp_trigger(mtk_crtc, cmdq_handle,
-				      MTK_TRIG_FLAG_TRIGGER);
+			MTK_TRIG_FLAG_TRIGGER);
 
 		cmdq_pkt_wfe(cmdq_handle,
 			     mtk_crtc->gce_obj.event[EVENT_CMD_EOF]);
@@ -5718,6 +5725,7 @@ static void mtk_crtc_get_output_comp_name(struct mtk_drm_crtc *mtk_crtc,
 		  __func__, drm_crtc_index(&mtk_crtc->base));
 	memset(buf, 0, buf_len);
 }
+
 static void mtk_crtc_get_event_name(struct mtk_drm_crtc *mtk_crtc, char *buf,
 				    int buf_len, int event_id)
 {
@@ -5897,6 +5905,7 @@ static void mtk_crtc_init_gce_obj(struct drm_device *drm_dev,
 
 	mtk_crtc->gce_obj.base = cmdq_register_device(dev);
 #endif
+
 }
 
 void mtk_drm_fake_vsync_switch(struct drm_crtc *crtc, bool enable)
@@ -6289,7 +6298,7 @@ int mtk_drm_crtc_create(struct drm_device *drm_dev,
 		char name[50];
 
 		mtk_drm_idlemgr_init(&mtk_crtc->base,
-				     drm_crtc_index(&mtk_crtc->base));
+				     drm_crtc_index(&mtk_crtc->base));//prize add by wangfei for MT6382 20220112
 
 		snprintf(name, sizeof(name), "enable_vblank");
 		mtk_crtc->vblank_enable_task = kthread_create(
@@ -7753,6 +7762,37 @@ unsigned int DISP_GetScreenHeight(void)
 	return pgc->mode.vdisplay;
 }
 
+int mtk_crtc_lcm_set_hbm(struct drm_crtc *crtc,unsigned int hbm)
+{
+	struct mtk_drm_crtc *mtk_crtc = to_mtk_crtc(crtc);
+	struct mtk_ddp_comp *output_comp;
+	// struct cmdq_pkt *cmdq_handle;
+	struct mtk_panel_params *panel_ext =
+		mtk_drm_get_lcm_ext_params(crtc);
+	int mHbm = hbm;
+	int ret = 0;
+
+	DDPPR_ERR("%s\n", __func__);
+
+	mtk_disp_esd_check_switch(crtc, 0);
+	output_comp = mtk_ddp_comp_request_output(mtk_crtc);
+	if (unlikely(!output_comp)) {
+		DDPPR_ERR("%s:invalid output comp\n", __func__);
+		ret = -EINVAL;
+		goto out; 
+	}
+	if (unlikely(!panel_ext)) {
+		DDPPR_ERR("%s:invalid panel_ext\n", __func__);
+		ret = -EINVAL;
+		goto out;
+	}
+	mtk_ddp_comp_io_cmd(output_comp, NULL, DSI_HBM_SET, &mHbm);
+out:
+	mtk_disp_esd_check_switch(crtc, 1);
+
+	return ret;
+}
+
 int mtk_crtc_lcm_ATA(struct drm_crtc *crtc)
 {
 	struct mtk_drm_crtc *mtk_crtc = to_mtk_crtc(crtc);
@@ -7769,7 +7809,7 @@ int mtk_crtc_lcm_ATA(struct drm_crtc *crtc)
 	if (unlikely(!output_comp)) {
 		DDPPR_ERR("%s:invalid output comp\n", __func__);
 		ret = -EINVAL;
-		goto out;
+		goto out; 
 	}
 	if (unlikely(!panel_ext)) {
 		DDPPR_ERR("%s:invalid panel_ext\n", __func__);

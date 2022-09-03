@@ -20,7 +20,9 @@
 #include <linux/workqueue.h>
 
 #include "leds-mtk-pwm.h"
-
+/* prize-lifenfen-20170822, add for prize reboot*/
+#include <mt-plat/mtk_boot_common.h>
+/* end */
 
 #define CONFIG_LEDS_BRIGHTNESS_CHANGED
 /****************************************************************************
@@ -195,6 +197,14 @@ static int led_level_pwm_set(struct mtk_led_data *led_dat,
 	max = (1 << led_dat->conf.trans_bits) - 1;
 	duty = led_dat->info.config.pwm_period_ns;
 	duty *= brightness;
+
+//prize add by huarui ,limit brightness, start
+	if (duty != 0 && duty * CONFIG_LIGHTNESS_MAPPING_VALUE < 255)
+		duty = 1;
+	else
+		duty = (duty * CONFIG_LIGHTNESS_MAPPING_VALUE) / 255;
+//prize add by huarui ,limit brightness, end
+
 	do_div(duty, max);
 
 	if (led_dat->info.config.active_low)
@@ -259,6 +269,18 @@ static int led_level_set(struct led_classdev *led_cdev,
 		container_of(led_cdev, struct led_conf_info, cdev);
 	struct mtk_led_data *led_dat =
 		container_of(led_conf, struct mtk_led_data, conf);
+
+/* prize-lifenfen-20170822, add for prize reboot. Will move to mtk_led.c*/
+		if (is_prize_boot_mode())
+		{
+			brightness =0;
+			pr_info("is_prize_boot_mode set brightness 0!");
+		}
+		else
+		{
+			pr_info("is_prize_boot_mode set normal %d  !",brightness);
+		}
+/* end */
 
 	if (led_dat->brightness == brightness)
 		return 0;
@@ -483,6 +505,18 @@ static int mtk_leds_parse_dt(struct device *dev,
 		ret = led_data_init(dev, s_led);
 		if (ret)
 			goto out_led_dt;
+		
+/* prize-lifenfen-20170822, add for prize reboot. Will move to mtk_led.c*/
+		if (is_prize_boot_mode())
+		{
+			s_led->conf.cdev.brightness = level =0;
+			pr_info("is_prize_boot_mode set brightness/level 0!");
+		}
+		else
+		{
+			pr_info("is_prize_boot_mode set normal brightness %d level %d!",s_led->conf.cdev.brightness,level);
+		}
+/* end */
 		led_pwm_config_add(dev, s_led, child);
 		led_level_set(&s_led->conf.cdev, level);
 		num++;

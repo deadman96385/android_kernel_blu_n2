@@ -20,6 +20,9 @@
 #include "cmdq-sec.h"
 #endif
 
+#if defined(CONFIG_MTK_MT6382_BDG)
+#include "cmdq-bdg.h"
+#endif
 #endif
 
 #define CMDQ_ARG_A_WRITE_MASK	0xffff
@@ -87,7 +90,6 @@ struct cmdq_flush_item {
 	cmdq_async_flush_cb err_cb;
 	void *err_data;
 	s32 err;
-	bool done;
 };
 
 static s8 cmdq_subsys_base_to_id(struct cmdq_base *clt_base, u32 base)
@@ -1582,7 +1584,6 @@ static void cmdq_flush_async_cb(struct cmdq_cb_data data)
 	if (item->cb)
 		item->cb(user_data);
 	complete(&pkt->cmplt);
-	item->done = true;
 }
 #endif
 
@@ -1810,7 +1811,12 @@ static int cmdq_pkt_wait_complete_loop(struct cmdq_pkt *pkt)
 #endif
 
 	/* make sure gce won't turn off during dump */
+#if defined(CONFIG_MTK_MT6382_BDG)
+	if (!pkt->bdg_data)
+		cmdq_mbox_enable(client->chan);
+#else
 	cmdq_mbox_enable(client->chan);
+#endif
 
 	while (!pkt->task_alloc) {
 		ret = wait_for_completion_timeout(&pkt->cmplt,
@@ -1838,12 +1844,25 @@ static int cmdq_pkt_wait_complete_loop(struct cmdq_pkt *pkt)
 		cmdq_util_dump_lock();
 		cmdq_util_user_msg(client->chan,
 			"===== SW timeout Pre-dump %u =====", cnt++);
+#if defined(CONFIG_MTK_MT6382_BDG)
+	if (!pkt->bdg_data)
 		cmdq_dump_summary(client, pkt);
+	else
+		cmdq_bdg_dump_summary(client, pkt);
+#else
+		cmdq_dump_summary(client, pkt);
+#endif
 		cmdq_util_dump_unlock();
 	}
 
 	pkt->task_alloc = false;
+
+#if defined(CONFIG_MTK_MT6382_BDG)
+	if (!pkt->bdg_data)
+		cmdq_mbox_disable(client->chan);
+#else
 	cmdq_mbox_disable(client->chan);
+#endif
 
 	return item->err;
 }

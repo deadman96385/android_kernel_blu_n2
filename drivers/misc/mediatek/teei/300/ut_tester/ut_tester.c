@@ -29,6 +29,7 @@
 #include <linux/semaphore.h>
 #include <linux/slab.h>
 #include <fdrv.h>
+#include <linux/mod_devicetable.h>
 
 #define IMSG_TAG "[ut_tester]"
 #include <imsg_log.h>

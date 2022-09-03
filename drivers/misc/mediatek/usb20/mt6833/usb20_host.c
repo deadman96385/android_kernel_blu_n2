@@ -325,6 +325,12 @@ void mt_usb_host_disconnect(int delay)
 }
 #ifdef CONFIG_MTK_USB_TYPEC
 #ifdef CONFIG_TCPC_CLASS
+
+#if defined(CONFIG_PRIZE_MT5725_SUPPORT_15W)
+extern int set_otg_gpio(int en);
+//extern int turn_off_5725(int en);
+#endif
+
 static int otg_tcp_notifier_call(struct notifier_block *nb,
 		unsigned long event, void *data)
 {
@@ -346,12 +352,20 @@ static int otg_tcp_notifier_call(struct notifier_block *nb,
 			noti->typec_state.new_state == TYPEC_ATTACHED_SRC) {
 			DBG(0, "OTG Plug in\n");
 			mt_usb_host_connect(0);
+			#if defined(CONFIG_PRIZE_MT5725_SUPPORT_15W)
+			//turn_off_5725(1);
+			set_otg_gpio(1);
+			#endif
 		} else if ((noti->typec_state.old_state == TYPEC_ATTACHED_SRC ||
 			noti->typec_state.old_state == TYPEC_ATTACHED_SNK) &&
 			noti->typec_state.new_state == TYPEC_UNATTACHED) {
 			if (is_host_active(mtk_musb)) {
 				DBG(0, "OTG Plug out\n");
 				mt_usb_host_disconnect(0);
+			#if defined(CONFIG_PRIZE_MT5725_SUPPORT_15W)
+			//turn_off_5725(1);
+			set_otg_gpio(0);
+			#endif
 			} else {
 				DBG(0, "USB Plug out\n");
 				mt_usb_disconnect();

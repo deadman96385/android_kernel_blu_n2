@@ -539,13 +539,16 @@ int mtk_power_misc_psy_event(
 			psy, POWER_SUPPLY_PROP_TEMP, &val);
 		if (!ret) {
 			tmp = val.intval / 10;
-			if (tmp >= BATTERY_SHUTDOWN_TEMPERATURE) {
+			/* Prize Hanjiuping added 20210909 for low temperature shutdown start */
+			if (tmp >= BATTERY_SHUTDOWN_TEMPERATURE
+				|| tmp <= BATTERY_SHUTDOWN_LOW_TEMPERATURE) {
 				bm_err(
-					"battery temperature >= %d,shutdown",
+					"battery temperature = %d,shutdown",
 					tmp);
 
 				wake_up_overheat(&sdc);
 			}
+			/* Prize Hanjiuping added 20210909 for low temperature shutdown end */
 		}
 	}
 

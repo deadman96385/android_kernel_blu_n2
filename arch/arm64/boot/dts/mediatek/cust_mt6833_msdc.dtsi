@@ -86,7 +86,7 @@
 #else
 	status = "disabled";
 #endif
-
+	status = "disabled";
 #ifndef CONFIG_FPGA_EARLY_PORTING
 	vmmc-supply = <&mt_pmic_vmch_ldo_reg>;
 	vqmmc-supply = <&mt_pmic_vmc_ldo_reg>;

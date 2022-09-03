@@ -23,6 +23,10 @@
 #include "mtk_drm_ddp.h"
 #include "mtk_drm_ddp_comp.h"
 #include "mtk_drm_mmp.h"
+#ifdef CONFIG_MTK_MT6382_BDG
+#include "mtk_dsi.h"
+#include "mtk_disp_bdg.h"
+#endif
 
 #define MAX_ENTER_IDLE_RSZ_RATIO 300
 
@@ -67,7 +71,9 @@ static void mtk_drm_vdo_mode_enter_idle(struct drm_crtc *crtc)
 
 	cmdq_pkt_flush(handle);
 	cmdq_pkt_destroy(handle);
+
 	drm_crtc_vblank_off(crtc);
+
 }
 
 static void mtk_drm_cmd_mode_enter_idle(struct drm_crtc *crtc)
@@ -106,6 +112,7 @@ static void mtk_drm_vdo_mode_leave_idle(struct drm_crtc *crtc)
 
 	cmdq_pkt_flush(handle);
 	cmdq_pkt_destroy(handle);
+
 	drm_crtc_vblank_on(crtc);
 }
 

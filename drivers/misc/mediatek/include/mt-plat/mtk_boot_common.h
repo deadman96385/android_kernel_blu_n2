@@ -27,6 +27,9 @@ enum boot_mode_t {
 	KERNEL_POWER_OFF_CHARGING_BOOT = 8,
 	LOW_POWER_OFF_CHARGING_BOOT = 9,
 	DONGLE_BOOT = 10,
+/* prize-lifenfen-20170822, add for prize reboot*/
+	PRIZE_BOOT = 101,
+/* end */
 	UNKNOWN_BOOT
 };
 
@@ -45,5 +48,9 @@ extern unsigned int get_boot_type(void);
 extern bool is_meta_mode(void);
 extern bool is_advanced_meta_mode(void);
 extern void set_boot_mode(unsigned int bm);
+/* prize-lifenfen-20170822, add for prize reboot*/
+extern bool is_prize_boot_mode(void);
+extern void set_prize_boot_mode(bool value);
+/* end */
 
 #endif

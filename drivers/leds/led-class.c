@@ -20,6 +20,7 @@
 #include <linux/slab.h>
 #include <linux/spinlock.h>
 #include <linux/timer.h>
+#include <linux/delay.h>
 #include <uapi/linux/uleds.h>
 #include "leds.h"
 
@@ -74,6 +75,60 @@ static ssize_t max_brightness_show(struct device *dev,
 }
 static DEVICE_ATTR_RO(max_brightness);
 
+// prize baibo for hbm sysfs interface begin
+extern int hbm_value;
+static ssize_t hbm_show(struct device *dev,
+		struct device_attribute *attr, char *buf)
+{
+	struct led_classdev *led_cdev = dev_get_drvdata(dev);
+
+	dev_err(dev, "wolf hbm_show hbm_value %d\n", hbm_value);
+
+	return sprintf(buf, "%u\n", hbm_value);
+}
+
+static ssize_t hbm_store(struct device *dev,
+		struct device_attribute *attr, const char *buf, size_t size)
+{
+	struct led_classdev *led_cdev = dev_get_drvdata(dev);
+	unsigned long state;
+	ssize_t ret;
+	int tries = 3;
+
+	mutex_lock(&led_cdev->led_access);
+
+	if (led_sysfs_is_disabled(led_cdev)) {
+		ret = -EBUSY;
+		goto unlock;
+	}
+
+	ret = kstrtoul(buf, 10, &state);
+	if (ret)
+		goto unlock;
+
+	dev_err(dev, "wolf hbm_store hbm state %d\n", state);
+
+	if (state == LED_OFF)
+		led_trigger_remove(led_cdev);
+
+	led_set_brightness(led_cdev, state);
+
+	msleep(5);
+	while (state != hbm_value && tries) {
+		msleep(10);
+		led_set_brightness(led_cdev, state);
+		dev_err(dev, "wolf hbm_store %d %d\n", tries, state);
+		tries--;
+	}
+
+	ret = size;
+unlock:
+	mutex_unlock(&led_cdev->led_access);
+	return ret;
+}
+static DEVICE_ATTR_RW(hbm);
+// prize baibo for hbm sysfs interface end
+
 #ifdef CONFIG_LEDS_TRIGGERS
 static DEVICE_ATTR(trigger, 0644, led_trigger_show, led_trigger_store);
 static struct attribute *led_trigger_attrs[] = {
@@ -88,6 +143,7 @@ static const struct attribute_group led_trigger_group = {
 static struct attribute *led_class_attrs[] = {
 	&dev_attr_brightness.attr,
 	&dev_attr_max_brightness.attr,
+	&dev_attr_hbm.attr,
 	NULL,
 };
 

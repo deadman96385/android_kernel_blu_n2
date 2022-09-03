@@ -19,7 +19,9 @@
 #include <upmu_common.h>
 #include "mtk_charger_intf.h"
 #include "mtk_charger_init.h"
-
+#if defined(CONFIG_PRIZE_SUPPORT_HX_ADAPTER)
+extern bool is_hx_adapter;
+#endif
 static int pe20_set_mivr(struct charger_manager *pinfo, int uV);
 
 /* Unit of the following functions are uV, uA */
@@ -239,6 +241,10 @@ static int pe20_set_ta_vchr(struct charger_manager *pinfo, u32 chr_volt)
 	chr_debug("%s: starts\n", __func__);
 
 	do {
+#if defined(CONFIG_PRIZE_SUPPORT_HX_ADAPTER)
+	    if(is_hx_adapter == 1)
+		break;
+#endif
 		vchr_before = pe20_get_vbus();
 		ret = __pe20_set_ta_vchr(pinfo, chr_volt);
 		vchr_after = pe20_get_vbus();
@@ -375,7 +381,14 @@ static int pe20_detect_ta(struct charger_manager *pinfo)
 
 	chr_debug("%s: starts\n", __func__);
 	pe20->ta_vchr_org = pe20_get_vbus();
+#if defined(CONFIG_PRIZE_SUPPORT_HX_ADAPTER)
+	if(is_hx_adapter == 1)
+	{
+	    chr_err("pe20_detect_ta is_hx_adapter\n");
+	    goto err;
+	}
 
+#endif
 	/* Disable OVP */
 	ret = pe20_enable_vbus_ovp(pinfo, false);
 	if (ret < 0)
@@ -509,7 +522,16 @@ int mtk_pe20_check_charger(struct charger_manager *pinfo)
 	 * SOC is not in range
 	 */
 	if (!pe20->to_check_chr_type ||
-	    mt_get_charger_type() != STANDARD_CHARGER ||
+	//prize added by sunshuai, non std charge  soft start, 20200428-start
+#if defined(CONFIG_PRIZE_NONSTANDARD_CHARGER)
+	   ( (mt_get_charger_type() != STANDARD_CHARGER)&&(mt_get_charger_type() != NONSTANDARD_CHARGER) )||
+#else
+		mt_get_charger_type() != STANDARD_CHARGER ||
+#endif
+	//prize added by huangjiwu,non std charge  soft start, 20200428-start
+#if defined(CONFIG_PRIZE_SUPPORT_HX_ADAPTER)
+		is_hx_adapter == 1 ||
+#endif
 	    battery_get_soc() < pinfo->data.ta_start_battery_soc ||
 	    battery_get_soc() >= pinfo->data.ta_stop_battery_soc)
 		goto out;

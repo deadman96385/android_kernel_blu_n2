@@ -77,7 +77,7 @@ bool mtk_pe50_is_ready(struct charger_manager *chgmgr)
 {
 	struct mtk_pe50 *pe50 = &chgmgr->pe5;
 
-	if (!chgmgr->enable_pe_5 || !chgmgr->enable_hv_charging)
+	if (!chgmgr->enable_pe_5 || !chgmgr->enable_hv_charging || !chgmgr->pe5.is_enabled)
 		return false;
 	return prop_chgalgo_is_algo_ready(pe50->pca_algo);
 }

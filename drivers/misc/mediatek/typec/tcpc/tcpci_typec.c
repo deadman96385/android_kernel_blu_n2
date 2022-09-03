@@ -59,7 +59,24 @@ static const char *const typec_wait_ps_name[] = {
 	"DBG_VSafe5V",
 };
 #endif	/* TYPEC_INFO2_ENABLE */
+/*prize-sunshuai-20190213, add for Wireless charging and OTG switching  start*/
+#if defined(CONFIG_PRIZE_NE6153_SUPPORT) || defined(CONFIG_PRIZE_WIRELESS_RECEIVER_MAXIC_MT5715) || defined(CONFIG_PRIZE_MT5725_SUPPORT_15W) || defined(CONFIG_PRIZE_CV8035D_SUPPORT)
+extern int set_otg_gpio(int en);
 
+#if defined(CONFIG_PRIZE_NE6153_SUPPORT) || defined(CONFIG_PRIZE_CV8035D_SUPPORT)
+extern int wrx_disable_vout(void);
+#endif
+
+#if defined(CONFIG_PRIZE_WIRELESS_RECEIVER_MAXIC_MT5715)
+extern  int  ldo_disable(void);
+#endif
+
+#if defined(CONFIG_PRIZE_MT5725_SUPPORT_15W)
+extern int turn_off_5725(int en);
+#endif
+
+#endif
+/*prize-sunshuai-20190213, add for Wireless charging and OTG switching  end*/
 static inline void typec_wait_ps_change(struct tcpc_device *tcpc_dev,
 					enum TYPEC_WAIT_PS_STATE state)
 {
@@ -305,6 +322,12 @@ static const char *const typec_attach_name[] = {
 	"NORP_SRC",
 };
 
+//prize add by lipengpeng 20200315 start
+#ifdef CONFIG_PRIZE_TYPEC_POSITIVE_NEGATIVE
+int otgdetection=-1;
+int typeccharge_det=-1;
+#endif
+//prize add by lipengpeng 20200315 end
 static int typec_alert_attach_state_change(struct tcpc_device *tcpc_dev)
 {
 	int ret = 0;
@@ -324,6 +347,44 @@ static int typec_alert_attach_state_change(struct tcpc_device *tcpc_dev)
 
 	TYPEC_INFO("Attached-> %s\r\n",
 		   typec_attach_name[tcpc_dev->typec_attach_new]);
+
+//prize add by lipengpeng 20200315 start
+#ifdef CONFIG_PRIZE_TYPEC_POSITIVE_NEGATIVE
+	pr_info("lpp---cc1=%d,cc2=%d\n",typec_get_cc1(),typec_get_cc2());
+	if(tcpc_dev->typec_attach_new==2)
+	{
+		if(typec_get_cc1()==0&&typec_get_cc2()==2)
+			otgdetection=1;
+		else if(typec_get_cc1()==2&&typec_get_cc2()==0) {
+				otgdetection=0;
+		}
+		else {
+				otgdetection= -1;
+				pr_info("lpp----otg typec not detection\n");
+		}
+	}
+
+	if(tcpc_dev->typec_attach_new==1)
+	{
+		if(typec_get_cc1()==0&&typec_get_cc2()==5)
+			typeccharge_det=1;
+		else if(typec_get_cc1()==5&&typec_get_cc2()==0) {
+				typeccharge_det=0;
+		}	
+		else {
+				typeccharge_det= -1;
+				pr_info("lpp----otg typec not detection\n");
+		}
+	}
+
+	if(tcpc_dev->typec_attach_new==0)
+	{
+		typeccharge_det= -1;
+		otgdetection= -1;
+
+	}
+#endif /*CONFIG_PRIZE_TYPEC_POSITIVE_NEGATIVE*/
+//prize add by lipengpeng 20200315 end
 
 	/*Report function */
 	ret = tcpci_report_usb_port_changed(tcpc_dev);
@@ -2035,6 +2096,57 @@ int tcpc_typec_handle_cc_change(struct tcpc_device *tcpc_dev)
 	if (tcpc_dev->typec_state == typec_attachwait_snk
 		|| tcpc_dev->typec_state == typec_attachwait_src)
 		typec_wait_ps_change(tcpc_dev, TYPEC_WAIT_PS_DISABLE);
+/*prize-sunshuai-20190213, add for Wireless charging and OTG switching  start */
+#if defined(CONFIG_PRIZE_NE6153_SUPPORT) || defined(CONFIG_PRIZE_WIRELESS_RECEIVER_MAXIC_MT5715) || defined(CONFIG_PRIZE_MT5725_SUPPORT_15W) || defined(CONFIG_PRIZE_CV8035D_SUPPORT)
+	if (typec_is_cc_attach(tcpc_dev)) {
+#if defined(CONFIG_PRIZE_NE6153_SUPPORT) || defined(CONFIG_PRIZE_CV8035D_SUPPORT)
+		wrx_disable_vout();
+#endif
+
+#if defined(CONFIG_PRIZE_WIRELESS_RECEIVER_MAXIC_MT5715)
+        ldo_disable();
+#endif
+
+#if defined(CONFIG_PRIZE_MT5725_SUPPORT_15W)
+#ifdef CONFIG_PRIZE_MT5725_SUPPORT_15W_NEW
+		test_gpio(1);
+		mdelay(40);
+		turn_off_5725(0);
+#else
+		turn_off_5725(1);
+#endif
+#endif
+
+#if defined(CONFIG_PRIZE_NE6153_SUPPORT) || defined(CONFIG_PRIZE_WIRELESS_RECEIVER_MAXIC_MT5715) || defined(CONFIG_PRIZE_CV8035D_SUPPORT)
+		set_otg_gpio(1);
+#endif
+		typec_attach_wait_entry(tcpc_dev);
+#ifdef CONFIG_WATER_DETECTION
+		if (typec_state_old == typec_unattached_snk ||
+		    typec_state_old == typec_unattached_src) {
+#ifdef CONFIG_WD_POLLING_ONLY
+			if (get_boot_mode() == KERNEL_POWER_OFF_CHARGING_BOOT
+			    || get_boot_mode() == LOW_POWER_OFF_CHARGING_BOOT)
+				typec_check_water_status(tcpc_dev);
+#else
+			typec_check_water_status(tcpc_dev);
+#endif /* CONFIG_WD_POLLING_ONLY */
+		}
+#endif /* CONFIG_WATER_DETECTION */
+	} else{
+#if defined(CONFIG_PRIZE_NE6153_SUPPORT) || defined(CONFIG_PRIZE_WIRELESS_RECEIVER_MAXIC_MT5715) || defined(CONFIG_PRIZE_CV8035D_SUPPORT)
+		set_otg_gpio(0);
+#endif
+
+#if defined(CONFIG_PRIZE_MT5725_SUPPORT_15W)
+#if defined(CONFIG_PRIZE_MT5725_SUPPORT_15W_NEW)
+		test_gpio(0);
+#endif
+		turn_off_5725(0);
+#endif
+		typec_detach_wait_entry(tcpc_dev);
+	}
+#else
 
 	if (typec_is_cc_attach(tcpc_dev)) {
 		typec_attach_wait_entry(tcpc_dev);
@@ -2052,6 +2164,8 @@ int tcpc_typec_handle_cc_change(struct tcpc_device *tcpc_dev)
 #endif /* CONFIG_WATER_DETECTION */
 	} else
 		typec_detach_wait_entry(tcpc_dev);
+#endif
+/*prize-sunshuai-20190213, add for Wireless charging and OTG switching  end */
 
 	return 0;
 }
@@ -2467,7 +2581,15 @@ static inline int typec_handle_vbus_absent(struct tcpc_device *tcpc_dev)
 	}
 #endif	/* CONFIG_USB_POWER_DELIVERY */
 
+/*prize add by sunshuai for A-C 30w charge 20201109-start */
+#ifdef CONFIG_PRIZE_ATOC_TYPEC_CHARGE
+	if (tcpc_dev->typec_state == typec_attached_snk ||
+			tcpc_dev->typec_state == typec_attached_dbgacc_snk ||
+			tcpc_dev->typec_state == typec_attached_custom_src)
+#else
 	if (tcpc_dev->typec_state == typec_attached_snk)
+#endif
+/*prize add by sunshuai for A-C 30w charge 20201109-end */
 		typec_attached_snk_vbus_absent(tcpc_dev);
 
 #ifndef CONFIG_TCPC_VSAFE0V_DETECT

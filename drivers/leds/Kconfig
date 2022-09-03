@@ -709,6 +709,15 @@ config LEDS_NIC78BX
 	  To compile this driver as a module, choose M here: the module
 	  will be called leds-nic78bx.
 
+# prize add by huarui, 20210901, start
+config LEDS_AW9110
+	tristate "Userspace LED support"
+	depends on LEDS_CLASS
+	help
+	  This option enables support for userspace LEDs.
+# prize add by huarui, 20210901, end
+
+
 comment "LED Triggers"
 source "drivers/leds/trigger/Kconfig"
 
