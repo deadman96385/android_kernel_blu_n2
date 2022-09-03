@@ -1,0 +1,69 @@
+/*
+ * Copyright (c) 2019 MediaTek Inc.
+ *
+ * This program is free software; you can redistribute it and/or modify
+ * it under the terms of the GNU General Public License version 2 as
+ * published by the Free Software Foundation.
+ *
+ * This program is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ * GNU General Public License for more details.
+ */
+/* TOUCH start */
+
+&spi0 {
+	status = "okay";
+	#address-cells = <1>;
+	#size-cells = <0>;
+
+	synaptics_tcm@0 {
+		compatible = "synaptics,tcm-spi";
+		reg = <0>; //Same as CS ID
+		spi-max-frequency = <5000000>;
+
+		//interrupt-parent = <&pio>;
+		//interrupts = <14 IRQ_TYPE_EDGE_FALLING 14 0>;
+		//vdd-supply = <&mt_pmic_vfp_ldo_reg>;
+		avdd-supply = <&mt_pmic_vtp_ldo_reg>;
+		pinctrl-names = "default","pmx_ts_active", "pmx_ts_suspend";
+		pinctrl-0 = <&ts_default>;
+		pinctrl-1 = <&ts_active>;
+		pinctrl-2 = <&ts_suspend>;
+		//synaptics,bus-reg-name = "vdd";
+		synaptics,pwr-reg-name = "avdd";
+		synaptics,irq-gpio = <&pio 14 0x2008>; /* IRQF_ONESHOT | IRQF_TRIGGER_LOW */
+		synaptics,irq-on-state = <0>;
+		synaptics,reset-gpio = <&pio 15 0x0>;
+		synaptics,reset-on-state = <0>;
+		synaptics,reset-active-ms = <20>;
+		synaptics,reset-delay-ms = <200>;
+		synaptics,power-delay-ms = <200>;
+		synaptics,spi-mode = <0>;
+		synaptics,byte-delay-us = <0>;
+		synaptics,block-delay-us = <0>;
+		synaptics,ubl-max-freq = <5000000>;
+		synaptics,ubl-byte-delay-us = <20>;
+	};
+
+};
+
+&pio {
+	ts_default: eintdefault {
+	};
+
+	ts_active: int_active {
+		pins_cmd_dat {
+			pinmux = <PINMUX_GPIO14__FUNC_GPIO14>;
+			input-enable;
+		};
+	};
+
+	ts_suspend: int_suspend {
+		pins_cmd_dat {
+			pinmux = <PINMUX_GPIO14__FUNC_GPIO14>;
+			output-low;
+		};
+	};
+};
+/* TOUCH end */
